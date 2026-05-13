@@ -1,0 +1,63 @@
+import { create } from 'zustand';
+
+import type { AuthUser } from '@/types/store';
+import { clearTokens, setTokens } from '@/utils/secure-storage';
+
+type AuthState = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  user: AuthUser | null;
+  roles: string[];
+  permissions: string[];
+  isAuthenticated: boolean;
+  isRefreshing: boolean;
+  setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
+  hydrateTokens: (accessToken: string | null, refreshToken: string | null) => void;
+  setUser: (user: AuthUser | null) => void;
+  setRefreshing: (isRefreshing: boolean) => void;
+  logout: () => Promise<void>;
+};
+
+export const useAuthStore = create<AuthState>((set) => ({
+  accessToken: null,
+  refreshToken: null,
+  user: null,
+  roles: [],
+  permissions: [],
+  isAuthenticated: false,
+  isRefreshing: false,
+  async setTokens(accessToken, refreshToken) {
+    await setTokens(accessToken, refreshToken);
+    set({ accessToken, refreshToken, isAuthenticated: true });
+  },
+  hydrateTokens(accessToken, refreshToken) {
+    set({
+      accessToken,
+      refreshToken,
+      isAuthenticated: Boolean(accessToken && refreshToken),
+    });
+  },
+  setUser(user) {
+    set({
+      user,
+      roles: user?.roles ?? [],
+      permissions: user?.permissions ?? [],
+    });
+  },
+  setRefreshing(isRefreshing) {
+    set({ isRefreshing });
+  },
+  async logout() {
+    // Phase rule: logout clears auth/session tokens only.
+    await clearTokens();
+    set({
+      accessToken: null,
+      refreshToken: null,
+      user: null,
+      roles: [],
+      permissions: [],
+      isAuthenticated: false,
+      isRefreshing: false
+    });
+  }
+}));

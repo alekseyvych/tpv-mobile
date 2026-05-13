@@ -1,0 +1,27 @@
+# Maestro E2E — Full Kitchen 4-Step Status Flow
+# Run: maestro test e2e/maestro/kitchen-status.yaml
+
+appId: com.tpvmobile
+---
+- tapOn: "Kitchen"
+- waitForAnimationToEnd
+- assertVisible: "Kitchen display"
+
+# Kitchen items should be visible (requires seeded data)
+- waitFor:
+    visible: "Advance to PREPARING"
+    timeout: 10000
+
+# Step 1: PENDING → PREPARING
+- tapOn: "Advance to PREPARING"
+- waitForAnimationToEnd
+- assertVisible: "Advance to READY"
+
+# Step 2: PREPARING → READY
+- tapOn: "Advance to READY"
+- waitForAnimationToEnd
+- assertVisible: "Advance to SERVED"
+
+# Step 3: READY → SERVED
+- tapOn: "Advance to SERVED"
+- waitForAnimationToEnd

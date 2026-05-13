@@ -1,0 +1,57 @@
+# Maestro E2E — Card Payment Runtime
+# Windows-compatible. Run after logging in with items in cart.
+# Run: maestro test e2e/maestro/card-payment.yaml
+
+appId: com.tpvmobile
+---
+# Navigate to POS
+- tapOn: "POS"
+- waitForAnimationToEnd
+
+# Open cart (assumes items pre-loaded in dev seeding)
+- tapOn: "Open cart"
+- waitForAnimationToEnd
+
+# Go to payment
+- tapOn: "Go to payment"
+- waitForAnimationToEnd
+- assertVisible: "Payment"
+
+# Tap "Pay card"
+- tapOn: "Pay card"
+- waitForAnimationToEnd
+
+# Should show loading or terminal selection
+- assertTrue:
+    condition: $visible["Loading terminals"] or $visible["Select terminal"] or $visible["Card payment in progress"]
+
+# If terminal selection appears, tap first option
+- runFlow:
+    when:
+      visible: "Select terminal"
+    commands:
+      - tapOn:
+          index: 0
+          id: "terminal-option"
+      - waitForAnimationToEnd
+
+# Wait for in-progress state
+- waitFor:
+    visible: "Card payment in progress"
+    timeout: 10000
+
+- assertVisible: "Card payment in progress"
+- assertVisible: "Cancel transaction"
+
+# Wait for outcome (dev backend auto-resolves)
+- waitFor:
+    visible: "Payment approved"
+    timeout: 30000
+
+- assertVisible: "Payment approved"
+- assertVisible: "Continue to receipt"
+
+# Go to receipt
+- tapOn: "Continue to receipt"
+- waitForAnimationToEnd
+- assertVisible: "Receipt"

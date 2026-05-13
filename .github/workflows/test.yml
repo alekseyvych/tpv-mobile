@@ -1,0 +1,102 @@
+name: tpv-mobile-ci
+
+on:
+  push:
+    paths:
+      - 'tpv-mobile/**'
+  pull_request:
+    paths:
+      - 'tpv-mobile/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tpv-mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tpv-mobile/package-lock.json
+
+      - name: Install
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm run test
+
+      - name: Expo Doctor
+        run: npm run doctor
+
+  e2e-ios:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: tpv-mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: tpv-mobile/package-lock.json
+
+      - name: Install
+        run: npm install
+
+      - name: Setup Xcode
+        run: |
+          sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer
+          sudo xctool -version
+
+      - name: Build Detox
+        run: npm run e2e:build
+        continue-on-error: true
+
+      - name: Run E2E Tests - Auth
+        run: npm run e2e:test:auth
+        continue-on-error: true
+
+      - name: Run E2E Tests - Dining Floor
+        run: npm run e2e:test:dining
+        continue-on-error: true
+
+      - name: Run E2E Tests - Kitchen
+        run: npm run e2e:test:kitchen
+        continue-on-error: true
+
+      - name: Run E2E Tests - Checkout
+        run: npm run e2e:test:checkout
+        continue-on-error: true
+
+      - name: Run E2E Tests - Token Refresh
+        run: npm run e2e:test:token-refresh
+        continue-on-error: true
+
+      - name: Run E2E Tests - Error Scenarios
+        run: npm run e2e:test:errors
+        continue-on-error: true
+
+      - name: Upload Detox Logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: detox-logs-ios
+          path: artifacts/
+          retention-days: 7

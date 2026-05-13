@@ -1,0 +1,37 @@
+# Maestro E2E — First Device Initialization (QR Pairing)
+# Windows-compatible alternative to Detox.
+# Requires: Android emulator running, app installed (expo run:android)
+# Run: maestro test e2e/maestro/first-init.yaml
+
+appId: com.tpvmobile
+---
+# Verify first-init screen appears on fresh launch
+- launchApp:
+    clearState: true
+    clearKeychain: true
+
+- waitForAnimationToEnd
+
+- assertVisible: "Welcome to TPV Mobile"
+- assertVisible: "Device setup"
+
+# Verify manual code fallback button is visible
+- assertVisible: "Use manual pairing code instead"
+
+# Navigate to manual code screen
+- tapOn: "Use manual pairing code instead"
+- waitForAnimationToEnd
+- assertVisible: "Enter manual pairing code"
+
+# Go back to first-init
+- tapOn: "Back"
+- waitForAnimationToEnd
+- assertVisible: "Welcome to TPV Mobile"
+
+# Restart without clearing state — first-init should NOT appear again if initialized
+# (Only runs if prior pairing succeeded)
+- stopApp
+- launchApp
+- waitForAnimationToEnd
+# If device was previously initialized, should see login screen
+- assertNotVisible: "Welcome to TPV Mobile"

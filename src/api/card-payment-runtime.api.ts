@@ -45,6 +45,7 @@ export interface StartCardPaymentInput {
   currency?: string;
   cashierId?: string;
   orderReference?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface FallbackToExternalInput {
@@ -54,6 +55,24 @@ export interface FallbackToExternalInput {
 export interface FallbackResponse {
   previousTransaction: CardPaymentTransaction;
   newTransaction: CardPaymentTransaction;
+}
+
+export type TpvProviderOutcome =
+  | 'approved'
+  | 'declined'
+  | 'cancelled_by_customer'
+  | 'terminal_timeout'
+  | 'unknown_result';
+
+export interface DevSimulatorSnapshot {
+  transactionId: string;
+  requestSnapshot: Record<string, unknown>;
+  createdAt: string;
+  resolution?: {
+    providerOutcome: TpvProviderOutcome;
+    delayMs: number;
+    resolvedAt: number;
+  };
 }
 
 export interface TerminalPaymentSettings {
@@ -129,6 +148,27 @@ export async function fallbackCardPaymentToExternal(
     `/payments/card-transactions/${transactionId}/fallback-external`,
     input,
     { headers: idempotentHeaders(key) },
+  );
+  return data;
+}
+
+export async function fetchCardPaymentDevSnapshot(
+  transactionId: string,
+): Promise<DevSimulatorSnapshot | null> {
+  const { data } = await apiClient.get<DevSimulatorSnapshot | null>(
+    `/payments/card-transactions/${transactionId}/dev/snapshot`,
+  );
+  return data;
+}
+
+export async function resolveCardPaymentDevOutcome(
+  transactionId: string,
+  providerOutcome: TpvProviderOutcome,
+  delayMs: number,
+): Promise<DevSimulatorSnapshot> {
+  const { data } = await apiClient.post<DevSimulatorSnapshot>(
+    `/payments/card-transactions/${transactionId}/dev/resolve`,
+    { providerOutcome, delayMs },
   );
   return data;
 }

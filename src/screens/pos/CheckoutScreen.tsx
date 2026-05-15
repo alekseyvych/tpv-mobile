@@ -36,10 +36,13 @@ function resolvePrice(product: ProductDto): number {
 }
 
 export function CheckoutScreen({ onOpenCart, onBack }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { total, addLine, lines } = useSaleFlow();
   const { isPhone } = useDeviceProfile();
   const insets = useSafeAreaInsets();
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
+  const formatAmount = (value: number) =>
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(value);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -61,7 +64,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
       setCategories(loadedCategories);
       setProducts(loadedProducts);
     } catch {
-      setError(t('pos.catalogLoadError', 'Catalog could not be loaded.'));
+      setError(t('pos.catalogLoadError'));
     } finally {
       setLoading(false);
     }
@@ -101,7 +104,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pos.checkoutTitle')} />
+      <Topbar title={t('pos.checkoutTitle')} onBack={onBack} />
       <ScreenContent style={styles.screenContent}>
         <Card style={styles.card}>
           <TitleText>{t('pos.checkoutTitle')}</TitleText>
@@ -111,7 +114,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder={t('pos.searchPlaceholder', 'Search products...')}
+            placeholder={t('pos.searchPlaceholder')}
             autoCapitalize="none"
           />
 
@@ -121,7 +124,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
             style={styles.categories}
             contentContainerStyle={styles.categoriesContent}
           >
-            {[{ id: 'all', name: t('pos.allCategories', 'All') }, ...categories].map((item) => {
+            {[{ id: 'all', name: t('pos.allCategories') }, ...categories].map((item) => {
               const selected = activeCategoryId === item.id;
               return (
                 <Pressable
@@ -151,7 +154,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
                 styles.productListContent,
                 { paddingBottom: theme.spacing.s2 + insets.bottom },
               ]}
-              ListEmptyComponent={<BodyText>{t('pos.noProducts', 'No products found')}</BodyText>}
+              ListEmptyComponent={<BodyText>{t('pos.noProducts')}</BodyText>}
               renderItem={({ item }) => {
                 const quantity = quantitiesByProductId[item.id] ?? 0;
 
@@ -172,7 +175,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
                       </View>
                     ) : null}
                     <BodyText numberOfLines={2} style={styles.productName}>{item.name}</BodyText>
-                    <MetaText style={styles.productPrice}>{`${resolvePrice(item).toFixed(2)} EUR`}</MetaText>
+                    <MetaText style={styles.productPrice}>{formatAmount(resolvePrice(item))}</MetaText>
                   </Pressable>
                 );
               }}
@@ -180,7 +183,6 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
           ) : null}
 
           <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} disabled={submitting} variant="secondary" />
             <Button
               title={`${t('pos.openCart')} (${lineCount})`}
               onPress={() => {

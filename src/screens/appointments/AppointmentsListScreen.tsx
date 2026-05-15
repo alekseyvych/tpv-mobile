@@ -133,14 +133,13 @@ export function AppointmentsListScreen({ onBack, onBook, onOpenAppointment }: Pr
 
   return (
     <ScreenPage>
-      <Topbar title={t('appointments.title')} />
+      <Topbar title={t('appointments.title')} onBack={onBack} />
       <ScreenContent>
         {isPhone ? (
           <>
             <Card>
               <SectionHeader title={t('appointments.title')} subtitle={t('appointments.todayCount', { count: todayCount })} />
               <View style={styles.row}>
-                <Button title={t('common.back')} onPress={onBack} variant="secondary" />
                 <Button title={t('appointments.bookAction')} onPress={onBook} />
               </View>
               <View style={styles.spacer} />
@@ -259,7 +258,6 @@ export function AppointmentsListScreen({ onBack, onBook, onOpenAppointment }: Pr
               <Card>
                 <SectionHeader title={t('appointments.title')} />
                 <View style={styles.row}>
-                  <Button title={t('common.back')} onPress={onBack} variant="secondary" />
                   <Button title={t('appointments.bookAction')} onPress={onBook} />
                 </View>
                 <View style={styles.spacer} />

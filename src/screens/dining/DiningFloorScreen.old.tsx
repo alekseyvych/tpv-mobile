@@ -436,7 +436,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 onPress={() => setViewMode('list')}
               >
                 <MetaText style={viewMode === 'list' ? styles.viewTabTextActive : undefined}>
-                  {t('dining.viewList', 'List')}
+                  {t('dining.viewList')}
                 </MetaText>
               </Pressable>
               <Pressable
@@ -444,7 +444,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 onPress={() => setViewMode('grid')}
               >
                 <MetaText style={viewMode === 'grid' ? styles.viewTabTextActive : undefined}>
-                  {t('dining.viewMap', 'Map')}
+                  {t('dining.viewMap')}
                 </MetaText>
               </Pressable>
             </View>
@@ -468,12 +468,12 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
               <Pressable onPress={() => handleOpenTable(item.id)}>
                 <ListItemCard>
                   <View style={styles.listTopRow}>
-                    <TitleText style={styles.itemTitle}>{`Table ${item.number}`}</TitleText>
+                    <TitleText style={styles.itemTitle}>{`${t('dining.table')} ${item.number}`}</TitleText>
                     <StatusPill label={item.status} tone={getStatusTone(item.status)} />
                   </View>
-                  <BodyText style={styles.itemMeta}>{`${t('dining.capacity', 'Capacity')}: ${item.capacity}`}</BodyText>
+                  <BodyText style={styles.itemMeta}>{`${t('dining.capacity')}: ${item.capacity}`}</BodyText>
                   {item.currentGuestCount != null && (
-                    <BodyText style={styles.itemMeta}>{`${t('dining.partySize', 'Party size')}: ${item.currentGuestCount}`}</BodyText>
+                    <BodyText style={styles.itemMeta}>{`${t('dining.partySize')}: ${item.currentGuestCount}`}</BodyText>
                   )}
                 </ListItemCard>
               </Pressable>

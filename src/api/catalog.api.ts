@@ -26,6 +26,12 @@ export type ProductDto = {
   price?: number;
   imageUrl?: string | null;
   dietaryLabels?: string[];
+  allergens?: Array<{
+    allergen: {
+      code: string;
+      name: string;
+    };
+  }>;
   removableIngredients?: string[];
   extras?: Array<{
     id: string;

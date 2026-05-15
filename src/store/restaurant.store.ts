@@ -25,8 +25,10 @@ interface RestaurantState {
   // Selection state
   selectedTableId: string | null
   selectedOrderId: string | null
+  selectedGuestCountDraft: number | null
   setSelectedTable: (tableId: string | null) => void
   setSelectedOrder: (orderId: string | null) => void
+  setSelectedGuestCountDraft: (count: number | null) => void
 
   // Filters for floor view
   tableFilters: {
@@ -75,8 +77,11 @@ export const useRestaurantStore = create<RestaurantState>((set, get) => ({
   // Selection
   selectedTableId: null,
   selectedOrderId: null,
+  selectedGuestCountDraft: null,
   setSelectedTable: (tableId) => set({ selectedTableId: tableId }),
   setSelectedOrder: (orderId) => set({ selectedOrderId: orderId }),
+  setSelectedGuestCountDraft: (count) =>
+    set({ selectedGuestCountDraft: count == null ? null : Math.max(1, Math.min(99, count)) }),
 
   // Filters
   tableFilters: {},

@@ -25,7 +25,10 @@ export interface RestaurantOrderItem {
   status: 'pending' | 'preparing' | 'ready' | 'served'
   notes?: string
   options?: OrderItemOption[]
+  startedAt?: string | null
   preparedAt?: string
+  servedAt?: string | null
+  acknowledgedAt?: string | null
   createdAt: string
   updatedAt: string
 }

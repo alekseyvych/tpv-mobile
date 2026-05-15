@@ -191,12 +191,9 @@ export function InactivitySettingsScreen({ onBack, embedded = false }: Props) {
             {error ? <ErrorText>{error}</ErrorText> : null}
             {saved ? <BodyText style={styles.savedMsg}>{t('inactivity.saved')}</BodyText> : null}
 
-            <View style={styles.btnRow}>
-              <Button title={t('inactivity.save')} onPress={handleSave} fullWidth />
-            </View>
-            {!embedded && onBack ? (
+            {embedded ? (
               <View style={styles.btnRow}>
-                <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth />
+                <Button title={t('inactivity.save')} onPress={handleSave} fullWidth />
               </View>
             ) : null}
           </Card>
@@ -208,7 +205,12 @@ export function InactivitySettingsScreen({ onBack, embedded = false }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('inactivity.title')} />
+      <Topbar
+        title={t('inactivity.title')}
+        onBack={onBack}
+        rightActionLabel={t('inactivity.save')}
+        onRightAction={handleSave}
+      />
       <ScrollView>
         <ScreenContent>{content}</ScreenContent>
       </ScrollView>

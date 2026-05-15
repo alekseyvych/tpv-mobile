@@ -9,6 +9,7 @@ import {
 } from '@/api/card-payment-runtime.api';
 import i18n from '@/i18n/config';
 import { PaymentScreen } from '@/screens/pos/PaymentScreen';
+import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
 import { useTerminalStore } from '@/store/terminal.store';
 
 jest.mock('@/api/sales.api', () => ({
@@ -44,6 +45,7 @@ describe('PaymentScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     useTerminalStore.setState({ selectedTerminalId: 'terminal-1' });
+    usePaymentRuntimeStore.getState().resetCardRuntimePhase();
   });
 
   it('renders payment options', () => {
@@ -66,8 +68,9 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
-    const cashButton = view.getByText(/pay cash/i);
-    fireEvent.press(cashButton);
+    // Wait for prepareSale to finish (button changes from "Preparing sale" to "Confirm payment")
+    const confirmButton = await view.findByText(/Confirm payment/i);
+    fireEvent.press(confirmButton);
 
     await waitFor(() => {
       expect(onPaid).toHaveBeenCalledWith('sale-1');
@@ -83,8 +86,13 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
-    const cardButton = view.getByText(/pay card/i);
-    fireEvent.press(cardButton);
+    // Switch to CARD method
+    const cardMethodButton = view.getByText(/pay card/i);
+    fireEvent.press(cardMethodButton);
+
+    // Press the start card payment button
+    const startButton = await view.findByText(/Start card payment/i);
+    fireEvent.press(startButton);
 
     await waitFor(() => {
       expect(view.queryByText(/terminal|select.*terminal/i)).toBeTruthy();
@@ -142,8 +150,12 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
-    const cardButton = view.getByText(/pay card/i);
-    fireEvent.press(cardButton);
+    // Switch to CARD method then press Start card payment
+    const cardMethodButton = view.getByText(/pay card/i);
+    fireEvent.press(cardMethodButton);
+
+    const startButton = await view.findByText(/Start card payment/i);
+    fireEvent.press(startButton);
 
     await waitFor(() => {
       expect(fetchTerminalPaymentSettings).toHaveBeenCalledWith('terminal-1');
@@ -161,12 +173,67 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
-    const cardButton = view.getByText(/pay card/i);
-    fireEvent.press(cardButton);
+    // Switch to CARD method then press Start card payment
+    const cardMethodButton = view.getByText(/pay card/i);
+    fireEvent.press(cardMethodButton);
+
+    const startButton = await view.findByText(/Start card payment/i);
+    fireEvent.press(startButton);
 
     await waitFor(() => {
       expect(view.queryByText(/Failed.*load|profile|terminal/i)).toBeTruthy();
     });
+  });
+
+  it('updates payment runtime phase store when card runtime is active and resets on unmount', async () => {
+    (fetchTerminalPaymentSettings as jest.Mock).mockResolvedValue({
+      terminalId: 'terminal-1',
+      defaultPaymentTerminalProfileId: 'profile-1',
+      allowOverride: false,
+      allowedPaymentTerminalProfileIds: ['profile-1'],
+      allowedPaymentTerminalProfiles: [
+        {
+          id: 'profile-1',
+          name: 'Main Terminal',
+          providerType: 'redsys_tpvpc',
+          integrationMode: 'integrated_api',
+          isActive: true,
+        },
+      ],
+    });
+
+    (startCardPayment as jest.Mock).mockResolvedValue({
+      id: 'tx-1',
+      saleId: 'sale-1',
+      posTerminalId: 'terminal-1',
+      terminalProfileId: 'profile-1',
+      amount: 100,
+      currency: 'EUR',
+      state: 'waiting',
+      providerType: 'redsys_tpvpc',
+      integrationMode: 'integrated_api',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <PaymentScreen onPaid={() => undefined} onBack={() => undefined} />
+      </I18nextProvider>
+    );
+
+    const cardMethodButton = view.getByText(/pay card/i);
+    fireEvent.press(cardMethodButton);
+
+    const startButton = await view.findByText(/Start card payment/i);
+    fireEvent.press(startButton);
+
+    await waitFor(() => {
+      expect(usePaymentRuntimeStore.getState().cardRuntimePhase).not.toBe('idle');
+    });
+
+    view.unmount();
+    expect(usePaymentRuntimeStore.getState().cardRuntimePhase).toBe('idle');
   });
 
   it('completes mixed payment successfully', async () => {

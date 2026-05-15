@@ -31,10 +31,11 @@ interface HomeSummaryCardsProps {
 }
 
 export function HomeSummaryCards({ isPhone }: HomeSummaryCardsProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<KPIMetric[]>([]);
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
 
   useEffect(() => {
     async function loadMetrics() {
@@ -49,25 +50,25 @@ export function HomeSummaryCards({ isPhone }: HomeSummaryCardsProps) {
           {
             id: 'totalRevenue',
             label: 'home.metrics.dailySales',
-            value: formatCurrency(kpis.totalRevenue),
+            value: formatCurrency(kpis.totalRevenue, locale),
             change: kpis.comparison ? formatChange(kpis.totalRevenue, kpis.comparison.totalRevenue) : undefined,
           },
           {
             id: 'transactionCount',
             label: 'home.metrics.ticketCount',
-            value: formatNumber(kpis.transactionCount),
+            value: formatNumber(kpis.transactionCount, locale),
             change: kpis.comparison ? formatChange(kpis.transactionCount, kpis.comparison.transactionCount) : undefined,
           },
           {
             id: 'avgTransactionValue',
             label: 'home.metrics.averageTicket',
-            value: formatCurrency(kpis.avgTransactionValue),
+            value: formatCurrency(kpis.avgTransactionValue, locale),
             change: kpis.comparison ? formatChange(kpis.avgTransactionValue, kpis.comparison.avgTransactionValue) : undefined,
           },
           {
             id: 'totalItemsSold',
             label: 'home.metrics.productsSold',
-            value: formatNumber(kpis.totalItemsSold),
+            value: formatNumber(kpis.totalItemsSold, locale),
             change: kpis.comparison ? formatChange(kpis.totalItemsSold, kpis.comparison.totalItemsSold) : undefined,
           },
         ];
@@ -86,7 +87,7 @@ export function HomeSummaryCards({ isPhone }: HomeSummaryCardsProps) {
     }
 
     void loadMetrics();
-  }, []);
+  }, [locale]);
 
   const numColumns = isPhone ? 2 : 4;
   const containerStyle = isPhone ? styles.gridPhone : styles.gridTablet;
@@ -97,13 +98,13 @@ export function HomeSummaryCards({ isPhone }: HomeSummaryCardsProps) {
 
       {loading && (
         <View style={styles.loadingCard}>
-          <Text style={styles.loadingText}>{t('home.metrics.loading', 'Loading metrics...')}</Text>
+          <Text style={styles.loadingText}>{t('home.metrics.loading')}</Text>
         </View>
       )}
 
       {error && (
         <View style={styles.errorCard}>
-          <Text style={styles.errorText}>{t(error, 'Metrics unavailable')}</Text>
+          <Text style={styles.errorText}>{t(error)}</Text>
         </View>
       )}
 
@@ -153,8 +154,8 @@ function MetricCard({ metric, columnCount }: MetricCardProps) {
   );
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-ES', {
+function formatCurrency(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 0,
@@ -162,8 +163,8 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat('es-ES').format(Math.round(value));
+function formatNumber(value: number, locale: string): string {
+  return new Intl.NumberFormat(locale).format(Math.round(value));
 }
 
 function formatChange(current: number, previous: number): string {

@@ -2,8 +2,8 @@ import {
   getCurrentUser,
   getQuickAccessProfilesWithContext,
   login,
-  loginWithPin,
   loginWithQuickAccess,
+  loginWithPin,
   logout as logoutRemote,
 } from '@/api/auth.api';
 import { analyticsService } from '@/services/AnalyticsService';
@@ -92,12 +92,37 @@ export function useAuth() {
     await auth.logout();
   }
 
+  async function swapAccountWithQuickAccess(userId: string, pin: string) {
+    const previousRefreshToken = auth.refreshToken;
+
+    // Invalid PIN or quick-access auth failures must not replace current session.
+    const nextTokens = await loginWithQuickAccess(userId, pin);
+    const nextUser = await getCurrentUser();
+
+    // Replace active session with the new user.
+    await auth.setTokens(nextTokens.accessToken, nextTokens.refreshToken);
+    auth.setUser(nextUser);
+
+    // Best-effort revoke previous refresh token, if available.
+    if (previousRefreshToken && previousRefreshToken !== nextTokens.refreshToken) {
+      try {
+        await logoutRemote(previousRefreshToken);
+      } catch {
+        await analyticsService.trackEvent('error.captured', { stage: 'auth.swap.revoke_previous_session' });
+      }
+    }
+
+    await analyticsService.trackEvent('auth.login.success', { method: 'quick_access_swap' });
+    return nextUser;
+  }
+
   return {
     isAuthenticated: auth.isAuthenticated,
     logout,
     loginWithEmailPassword,
     loginUsingPin,
     loginUsingQuickAccess,
+    swapAccountWithQuickAccess,
     loadQuickAccessProfiles,
     setTokens: auth.setTokens,
     setUser: auth.setUser

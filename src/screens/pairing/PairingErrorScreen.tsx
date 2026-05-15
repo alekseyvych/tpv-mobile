@@ -18,7 +18,7 @@ export function PairingErrorScreen({ onRetry, onBack }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pairing.errorTitle')} />
+      <Topbar title={t('pairing.errorTitle')} onBack={onBack} />
       <ScreenContent>
         <Card>
           <ErrorState
@@ -27,7 +27,6 @@ export function PairingErrorScreen({ onRetry, onBack }: Props) {
           />
           <View style={styles.row}>
             <Button title={t('common.retry')} onPress={onRetry} />
-            <Button title={t('common.back')} onPress={onBack} variant="secondary" />
           </View>
         </Card>
       </ScreenContent>

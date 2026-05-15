@@ -14,6 +14,7 @@ import {
   Text,
   SectionList,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 
 import { colors, theme } from '@/platform/theme';
@@ -30,19 +31,42 @@ type MoreScreenProps = {
 
 export function MoreScreen({ onNavigate, isRouteEnabled }: MoreScreenProps) {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const sections = getModuleSections();
 
+  // Phone-only exclusions requested for the More overflow menu.
+  const HIDDEN_IN_MOBILE_MORE = new Set([
+    'catalog',
+    'inventory',
+    'customers',
+    'restaurant',
+    'workshop',
+    'fiscal',
+    'analytics',
+    'sales-receipts',
+    'users',
+    'roles',
+    'licenses',
+    'audit',
+  ]);
+
   // Get all modules organized by section
-  const sectionData = sections.map((section) => ({
-    title: section.label,
-    data: getModulesBySection(section.id as any),
-  }));
+  const sectionData = sections
+    .map((section) => ({
+      title: section.label,
+      data: getModulesBySection(section.id as any).filter((module) => !HIDDEN_IN_MOBILE_MORE.has(module.id)),
+    }))
+    .filter((section) => section.data.length > 0);
 
   return (
     <View style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top + theme.spacing.md }]}>
+        <Text style={styles.headerTitle}>{t('layout.more')}</Text>
+      </View>
       <SectionList
         sections={sectionData}
         keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
         renderItem={({ item: module }) => {
           const routeEnabled = isRouteEnabled(module.route);
           const disabled = module.locked || !routeEnabled;
@@ -83,6 +107,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bgPage,
+  },
+  header: {
+    paddingHorizontal: LAYOUT.contentPaddingHorizontal,
+    paddingBottom: theme.spacing.md,
+    backgroundColor: colors.bgPage,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  headerTitle: {
+    fontSize: theme.typography.fontSize.lg,
+    fontWeight: theme.typography.fontWeight.bold,
+    color: colors.textPrimary,
+  },
+  listContent: {
+    paddingBottom: theme.spacing.xl,
   },
   sectionHeader: {
     paddingHorizontal: LAYOUT.contentPaddingHorizontal,

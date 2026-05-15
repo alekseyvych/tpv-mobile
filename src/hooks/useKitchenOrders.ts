@@ -25,6 +25,10 @@ export type KitchenDisplayItem = {
   status: KitchenItemStatus;
   notes?: string;
   createdAt: string;
+  startedAt?: string | null;
+  preparedAt?: string | null;
+  servedAt?: string | null;
+  acknowledgedAt?: string | null;
   elapsedMinutes: number;
 };
 
@@ -63,6 +67,10 @@ export function useKitchenOrders() {
             status: normalizeKitchenItemStatus(item.status),
             notes: item.notes,
             createdAt: item.createdAt,
+            startedAt: item.startedAt ?? null,
+            preparedAt: item.preparedAt ?? null,
+            servedAt: item.servedAt ?? null,
+            acknowledgedAt: item.acknowledgedAt ?? null,
             elapsedMinutes: Math.max(
               0,
               Math.floor((now - new Date(item.createdAt).getTime()) / 60000)

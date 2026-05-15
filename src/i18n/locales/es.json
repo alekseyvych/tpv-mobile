@@ -5,10 +5,16 @@
     "home": "Inicio",
     "settings": "Ajustes",
     "logout": "Cerrar sesión",
+    "cancel": "Cancelar",
+    "done": "Listo",
     "placeholder": "Pantalla de marcador",
     "back": "Volver",
     "retry": "Reintentar",
-    "loading": "Cargando..."
+    "dismiss": "Cerrar",
+    "remove": "Quitar",
+    "loading": "Cargando...",
+    "selectAll": "Seleccionar todo",
+    "selectNone": "Ninguno"
   },
   "auth": {
     "title": "Acceder",
@@ -29,7 +35,19 @@
     "pinLengthError": "El PIN debe tener exactamente 4 dígitos",
     "invalidPin": "PIN inválido",
     "loginWithPin": "Entrar con PIN",
-    "loginWithQuickAccess": "Entrar con acceso rápido"
+    "loginWithQuickAccess": "Entrar con acceso rápido",
+    "selectProfile": "Seleccionar perfil"
+  },
+  "header": {
+    "userMenu": {
+      "title": "Menú de usuario",
+      "options": "Opciones",
+      "logout": "Cerrar sesión",
+      "swapAccount": "Cambiar cuenta",
+      "swapTitle": "Cambiar cuenta",
+      "swapDescription": "Elige un perfil de personal e introduce PIN para continuar.",
+      "swapBlockedUnsafeCardRuntime": "El cambio de cuenta está bloqueado mientras la terminal de tarjeta está activa. Finaliza o cancela el flujo de tarjeta primero."
+    }
   },
   "context": {
     "checkingTitle": "Verificando contexto del dispositivo",
@@ -94,24 +112,54 @@
     "loadingTitle": "Cargando mesas",
     "loadingDescription": "Obteniendo estado de mesas para esta ubicación.",
     "loadErrorTitle": "No se pudieron cargar las mesas",
+    "errorTitle": "Error",
     "tableDetailTitle": "Detalle de mesa",
     "selectedTable": "Mesa seleccionada",
     "createOrder": "Crear orden",
     "orderStatus": "Estado de orden",
     "emptyOrdersTitle": "No hay órdenes activas",
     "noOrders": "Aún no hay órdenes",
+    "noActiveOrder": "No hay orden activa",
+    "createNewOrder": "Inicia una nueva orden para esta mesa",
+    "table": "Mesa",
+    "capacity": "Capacidad",
+    "status": "Estado",
+    "paymentLocked": "Pago bloqueado",
+    "activeOrder": "Orden activa",
+    "partySize": "Comensales",
+    "noItems": "No hay productos en la orden",
+    "noOrderItems": "Agrega productos a la orden",
+    "addItems": "Agregar productos",
+    "addItemFallbackError": "No se pudo agregar el producto",
+    "checkout": "Cobrar",
+    "checkoutShiftMissing": "No hay un turno de caja activo para este terminal. Abre un turno antes de cobrar.",
+    "checkoutRecoverMissingSale": "No se encontró una venta de pago abierta para esta orden. Verifica el estado desde el salón.",
+    "checkoutRecoverPending": "El pago sigue pendiente o falló. Reintenta el pago o cancela el cobro.",
+    "checkoutPaidSuccess": "Pago completado y estado de mesa/orden actualizado.",
+    "checkoutRecoverAction": "Recuperar estado de pago desconocido",
+    "resumeCheckout": "Reanudar cobro",
+    "paymentLockedByOtherTerminal": "Esta orden está bloqueada para cobro por otro terminal.",
+    "item": "Producto",
+    "items": "productos",
+    "viewList": "Lista",
+    "viewMap": "Mapa",
+    "hideLegend": "Ocultar leyenda",
+    "showLegend": "Mostrar leyenda",
     "loadError": "Error al cargar mesas"
   },
   "kitchen": {
     "navTitle": "Cocina",
     "title": "Pantalla de cocina",
     "description": "Sigue items pendientes de cocina y márcalos como listos.",
+    "orderAge": "Línea más antigua: {{minutes}} min",
     "stations": {
       "kitchen": "Cocina",
       "bar": "Barra",
       "all": "Todo"
     },
     "statusLabel": "Estado",
+    "table": "Mesa",
+    "qty": "Cant.",
     "tableQty": "Mesa {{table}} • Cant: {{qty}}",
     "elapsedMinutes": "En espera {{minutes}} min",
     "priorityLabel": "Prioridad: {{priority}}",
@@ -132,7 +180,15 @@
     "noItemsByStatus": "No hay items en {{status}}",
     "loadError": "Error al cargar items de cocina",
     "markReadyError": "Error al marcar item como listo",
-    "permissionError": "No tienes permiso para acceder a operaciones de cocina"
+    "permissionError": "No tienes permiso para acceder a operaciones de cocina",
+    "legend": {
+      "openAria": "Mostrar leyenda de tiempos de cocina",
+      "title": "Leyenda de tiempos de cocina",
+      "green": "Verde 0–10 min — en tiempo",
+      "yellow": "Amarillo 10–20 min — con retraso",
+      "red": "Rojo 20+ min — requiere atención",
+      "footnote": "El tiempo transcurrido se mide desde que la línea entra en cola de cocina."
+    }
   },
   "pos": {
     "navTitle": "TPV",
@@ -144,15 +200,77 @@
     "goPayment": "Ir a pago",
     "paymentTitle": "Pago",
     "paymentDescription": "Selecciona un método de pago para esta venta.",
+    "subtotalLabel": "Subtotal",
+    "taxLabel": "Impuestos",
     "payCash": "Pagar efectivo",
     "payCard": "Pagar tarjeta",
+    "payMixed": "Pago mixto",
+    "enterCashAmount": "Ingresa el monto en efectivo",
+    "cashTendered": "Efectivo recibido",
+    "changeLabel": "Cambio",
+    "preparingSale": "Preparando...",
+    "confirmPayment": "Confirmar pago",
+    "startCardPayment": "Iniciar pago con tarjeta",
+    "cardCancelledTitle": "Pago con tarjeta cancelado",
+    "cardCancelledMessage": "Elige otro método de pago.",
+    "mixedCashPrompt": "Parte en efectivo",
+    "cardRemainderLabel": "Resto en tarjeta",
+    "prepareSaleError": "No se pudo preparar la venta. Revisa la conexión e inténtalo de nuevo.",
+    "prepareSaleBeforePaymentError": "No se pudo preparar la venta antes del pago.",
+    "mixedAmountError": "El pago mixto requiere montos positivos en efectivo y tarjeta.",
     "paymentError": "El pago falló. Reintenta.",
+    "cardTerminalProfileMissingTitle": "Terminal de tarjeta no configurada",
+    "cardTerminalProfileMissingMessage": "La terminal {{terminal}} no tiene un perfil de pago configurado. Pide a un administrador que lo configure.",
+    "catalogLoadError": "No se pudo cargar el catálogo.",
+    "searchPlaceholder": "Buscar productos...",
+    "allCategories": "Todas",
+    "noProducts": "No se encontraron productos",
     "receiptTitle": "Recibo",
+    "receiptLoadError": "No se pudieron cargar los detalles del recibo.",
     "receiptStatusReady": "Venta completada",
+    "receiptNumberLabel": "Número de recibo",
     "saleIdLabel": "ID de venta",
+    "paymentLabel": "Pago",
     "cloudReceiptHint": "El recibo está disponible en el historial cloud.",
     "newSale": "Nueva venta",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "card": {
+      "loadingTerminals": "Cargando terminales...",
+      "selectTerminal": "Seleccionar terminal",
+      "selectTerminalDescription": "Elige el terminal de tarjeta para este pago.",
+      "transactionInProgress": "Pago con tarjeta en curso",
+      "statePending": "Pendiente",
+      "stateConnecting": "Conectando",
+      "stateWaiting": "Esperando",
+      "stateProcessing": "Procesando",
+      "cancelTransaction": "Cancelar transacción",
+      "approved": "Pago aprobado",
+      "approvedDescription": "El pago con tarjeta fue aprobado. Continúa para imprimir el recibo.",
+      "continueToReceipt": "Continuar al recibo",
+      "declined": "Pago rechazado",
+      "declinedDescription": "El pago con tarjeta fue rechazado. Puedes reintentar o pagar de otra forma.",
+      "providerOutcome": "Motivo",
+      "cancelled": "Pago cancelado",
+      "cancelledDescription": "El pago con tarjeta fue cancelado. Puedes reintentar o pagar de otra forma.",
+      "unknownOutcome": "Resultado desconocido",
+      "unknownOutcomeDescription": "La respuesta del terminal no fue clara. Verifica el terminal y reintenta.",
+      "fallbackToExternal": "Pagar en terminal externo"    },
+    "tpvSim": {
+      "title": "Simulador de terminal (desarrollo)",
+      "description": "Selecciona el resultado para esta transacción activa.",
+      "actions": {
+        "simulate": "Simular"
+      },
+      "delay": {
+        "instant": "Instantáneo"
+      }
+    },
+    "tpvOutcomes": {
+      "approved": "Aprobado",
+      "declined": "Rechazado",
+      "cancelled_by_customer": "Cancelado por cliente",
+      "terminal_timeout": "Tiempo de terminal agotado",
+      "unknown_result": "Resultado desconocido"    }
   },
     "card": {
       "loadingTerminals": "Cargando terminales...",
@@ -260,6 +378,44 @@
     "queuedCount": "En cola: {{count}}",
     "failedCount": "Fallidos: {{count}}"
   },
+  "terminalSelection": {
+    "required": "Selecciona un terminal antes del pago."
+  },
+  "terminal": {
+    "selection": {
+      "title": "Seleccionar terminal",
+      "subtitle": "Elige un terminal TPV para comenzar",
+      "loading": "Cargando terminales...",
+      "permissionDenied": "Permiso denegado",
+      "permissionDeniedMsg": "No tienes permiso para ver terminales.",
+      "empty": "No hay terminales disponibles",
+      "emptyMsg": "Aún no se han creado terminales activos.",
+      "error": "Error al cargar terminales",
+      "errorMsg": "Inténtalo más tarde o contacta soporte.",
+      "retry": "Reintentar",
+      "modeRestaurant": "Restaurante",
+      "modePersonalized": "Personalizado",
+      "modeRetail": "Retail",
+      "lastUsed": "Último uso",
+      "selected": "Seleccionado"
+    }
+  },
+  "shift": {
+    "open": {
+      "title": "Abrir turno de caja",
+      "terminal": "Terminal: {{name}}",
+      "description": "Ingresa el saldo de apertura para comenzar a operar en este terminal.",
+      "openingBalance": "Saldo de apertura (EUR)",
+      "invalidBalance": "Ingresa un saldo de apertura válido (0 o mayor)",
+      "error": "No se pudo abrir el turno. Inténtalo de nuevo.",
+      "confirm": "Abrir turno"
+    }
+  },
+  "payment": {
+    "errors": {
+      "noItems": "No hay productos para cobrar."
+    }
+  },
   "settings": {
     "profileTitle": "Perfil",
     "profileDescription": "Revisa tu cuenta autenticada y opciones de seguridad.",
@@ -312,7 +468,9 @@
     "logoutThisDevice": "Cerrar sesion en este dispositivo",
     "logoutAllDevices": "Cerrar sesion en todos",
     "factoryReset": "Reinicio de fabrica",
-    "appVersionLabel": "Versión de la app"
+    "appVersionLabel": "Versión de la app",
+    "permissionsTitle": "Permisos",
+    "permissionsCameraLabel": "Cámara"
   },
   "inactivity": {
     "title": "Tiempo de sesion",
@@ -363,14 +521,20 @@
       "dailySales": "Ventas del día",
       "ticketCount": "Tickets",
       "averageTicket": "Ticket promedio",
-      "productsSold": "Productos vendidos"
+      "productsSold": "Productos vendidos",
+      "loading": "Cargando métricas...",
+      "permissionDenied": "Métricas no disponibles para tu rol",
+      "loadError": "Métricas no disponibles"
     },
     "activity": {
       "title": "Actividad reciente",
       "recentSales": "Ventas recientes",
       "recentProducts": "Productos recientes",
       "recentCustomers": "Clientes recientes",
-      "empty": "Aún no hay actividad operativa reciente."
+      "empty": "Aún no hay actividad operativa reciente.",
+      "loading": "Cargando actividad...",
+      "permissionDenied": "Actividad no disponible para tu rol",
+      "loadError": "Actividad no disponible"
     }
   },
   "layout": {

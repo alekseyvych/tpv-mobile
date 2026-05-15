@@ -11,6 +11,7 @@ type AuthState = {
   permissions: string[];
   isAuthenticated: boolean;
   isRefreshing: boolean;
+  authSessionVersion: number;
   setTokens: (accessToken: string, refreshToken: string) => Promise<void>;
   hydrateTokens: (accessToken: string | null, refreshToken: string | null) => void;
   setUser: (user: AuthUser | null) => void;
@@ -26,6 +27,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   permissions: [],
   isAuthenticated: false,
   isRefreshing: false,
+  authSessionVersion: 0,
   async setTokens(accessToken, refreshToken) {
     await setTokens(accessToken, refreshToken);
     set({ accessToken, refreshToken, isAuthenticated: true });
@@ -42,6 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       user,
       roles: user?.roles ?? [],
       permissions: user?.permissions ?? [],
+      authSessionVersion: Date.now(),
     });
   },
   setRefreshing(isRefreshing) {
@@ -57,7 +60,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       roles: [],
       permissions: [],
       isAuthenticated: false,
-      isRefreshing: false
+      isRefreshing: false,
+      authSessionVersion: Date.now(),
     });
   }
 }));

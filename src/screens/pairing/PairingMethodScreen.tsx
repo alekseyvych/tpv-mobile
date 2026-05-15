@@ -21,7 +21,7 @@ export function PairingMethodScreen({ onChooseQr, onChooseManual, onBack }: Prop
 
   return (
     <ScreenPage>
-      <Topbar title={t('pairing.methodTitle')} />
+      <Topbar title={t('pairing.methodTitle')} onBack={onBack} />
       <ScreenContent>
         <View style={isPhone ? undefined : styles.tabletFormContainer}>
           <Card>
@@ -30,9 +30,6 @@ export function PairingMethodScreen({ onChooseQr, onChooseManual, onBack }: Prop
             <View style={styles.row}>
               <Button title={t('pairing.useQr')} onPress={onChooseQr} />
               <Button title={t('pairing.useManual')} onPress={onChooseManual} variant="secondary" />
-            </View>
-            <View style={styles.backRow}>
-              <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth />
             </View>
           </Card>
         </View>

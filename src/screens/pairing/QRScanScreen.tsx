@@ -36,14 +36,11 @@ export function QRScanScreen({ onScanned, onBack }: Props) {
   if (!permission?.granted) {
     return (
       <ScreenPage>
-        <Topbar title={t('pairing.qrTitle')} />
+        <Topbar title={t('pairing.qrTitle')} onBack={onBack} />
         <ScreenContent>
           <Card>
             <BodyText>{t('pairing.cameraPermissionRequired')}</BodyText>
             <Button title={t('pairing.grantCameraPermission')} onPress={() => void requestPermission()} />
-            <View style={styles.backRow}>
-              <Button title={t('common.back')} onPress={onBack} variant="secondary" />
-            </View>
           </Card>
         </ScreenContent>
       </ScreenPage>
@@ -52,7 +49,7 @@ export function QRScanScreen({ onScanned, onBack }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pairing.qrTitle')} />
+      <Topbar title={t('pairing.qrTitle')} onBack={onBack} />
       <ScreenContent>
         <BodyText>{t('pairing.qrDescription')}</BodyText>
         <View style={styles.cameraWrap}>
@@ -77,7 +74,6 @@ export function QRScanScreen({ onScanned, onBack }: Props) {
               setLocked(false);
             }}
           />
-          <Button title={t('common.back')} onPress={onBack} variant="secondary" />
         </View>
       </ScreenContent>
     </ScreenPage>

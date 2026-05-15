@@ -41,7 +41,7 @@ describe('ProfileScreen', () => {
     mockSettings.changeOwnPassword.mockResolvedValue(undefined);
     const view = render(
       <I18nextProvider i18n={i18n}>
-        <ProfileScreen onBack={() => undefined} />
+        <ProfileScreen onBack={() => undefined} embedded />
       </I18nextProvider>,
     );
 

@@ -130,7 +130,7 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('appointments.bookTitle')} />
+      <Topbar title={t('appointments.bookTitle')} onBack={onBack} />
       <ScreenContent>
         <Card>
           <SectionHeader title={t('appointments.bookTitle')} subtitle={t('appointments.bookSubtitle')} />
@@ -239,7 +239,6 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
 
           {error ? <ErrorText style={styles.error}>{error}</ErrorText> : null}
           <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} disabled={submitting} variant="secondary" />
             <Button title={submitting ? t('common.loading') : t('appointments.confirmBook')} onPress={() => void onSubmit()} disabled={!canSubmit || submitting} />
           </View>
         </Card>

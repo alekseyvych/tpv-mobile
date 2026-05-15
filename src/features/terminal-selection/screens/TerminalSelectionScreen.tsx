@@ -30,6 +30,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -37,6 +38,7 @@ import { colors, theme } from '@/platform/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenPage, ScreenContent } from '@/components/ScreenLayout';
+import { Topbar } from '@/components/Topbar';
 import { getTerminals, type Terminal, type OperatingMode } from '@/api/terminals.api';
 import { getActiveCashShift } from '@/api/cashShifts.api';
 import { useTerminalStore } from '@/store/terminal.store';
@@ -51,9 +53,16 @@ interface TerminalItemProps {
 }
 
 function TerminalItem({ terminal, isSelected, onSelect, isLoading }: TerminalItemProps) {
-  const mode = terminal.operatingMode === 'RESTAURANT' ? '🍽️' : terminal.operatingMode === 'PERSONALIZED' ? '⚙️' : '🛍️';
-  const statusIcon = terminal.active ? '✓' : '✗';
+  const { t, i18n } = useTranslation();
   const statusColor = terminal.active ? colors.success : colors.error;
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
+
+  const modeIconName: React.ComponentProps<typeof MaterialCommunityIcons>['name'] =
+    terminal.operatingMode === 'RESTAURANT'
+      ? 'silverware-fork-knife'
+      : terminal.operatingMode === 'PERSONALIZED'
+        ? 'cog-outline'
+        : 'shopping-outline';
 
   return (
     <TouchableOpacity
@@ -67,15 +76,26 @@ function TerminalItem({ terminal, isSelected, onSelect, isLoading }: TerminalIte
       activeOpacity={0.7}
     >
       <View style={styles.terminalHeader}>
-        <Text style={styles.terminalImage}>
-          {terminal.image || mode}
-        </Text>
+        {terminal.image ? (
+          <Text style={styles.terminalImageText}>{terminal.image}</Text>
+        ) : (
+          <MaterialCommunityIcons
+            name={modeIconName}
+            size={32}
+            color={colors.accentAction}
+            style={styles.terminalImageIcon}
+          />
+        )}
         <View style={styles.terminalName}>
           <Text style={styles.terminalNameText}>{terminal.name}</Text>
           <Text style={styles.terminalId}>{terminal.terminalId}</Text>
         </View>
         <View style={[styles.statusBadge, { backgroundColor: statusColor }]}>
-          <Text style={styles.statusBadgeText}>{statusIcon}</Text>
+          <MaterialCommunityIcons
+            name={terminal.active ? 'check' : 'close'}
+            size={16}
+            color={colors.textInverse}
+          />
         </View>
       </View>
 
@@ -86,21 +106,21 @@ function TerminalItem({ terminal, isSelected, onSelect, isLoading }: TerminalIte
       <View style={styles.terminalMeta}>
         <Text style={styles.terminalMode}>
           {terminal.operatingMode === 'RESTAURANT'
-            ? '🍽️ Restaurant'
+            ? t('terminal.selection.modeRestaurant')
             : terminal.operatingMode === 'PERSONALIZED'
-              ? '⚙️ Personalized'
-              : '🛍️ Retail'}
+              ? t('terminal.selection.modePersonalized')
+              : t('terminal.selection.modeRetail')}
         </Text>
         {terminal.lastUsedAt && (
           <Text style={styles.terminalLastUsed}>
-            Last: {new Date(terminal.lastUsedAt).toLocaleString('es-ES')}
+            {`${t('terminal.selection.lastUsed')}: ${new Date(terminal.lastUsedAt).toLocaleString(locale)}`}
           </Text>
         )}
       </View>
 
       {isSelected && (
         <View style={styles.selectedOverlay}>
-          <Text style={styles.selectedText}>Selected</Text>
+          <Text style={styles.selectedText}>{t('terminal.selection.selected')}</Text>
         </View>
       )}
     </TouchableOpacity>
@@ -228,6 +248,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
 
   return (
     <ScreenPage>
+      <Topbar title={t('terminal.selection.title')} />
       {pendingTerminal && (
         <OpenShiftModal
           visible={showShiftModal}
@@ -240,9 +261,8 @@ export function TerminalSelectionScreen(): React.ReactElement {
       <ScreenContent>
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>{t('terminal.selection.title', 'Select Terminal')}</Text>
             <Text style={styles.subtitle}>
-              {t('terminal.selection.subtitle', 'Choose a POS terminal to begin')}
+              {t('terminal.selection.subtitle')}
             </Text>
           </View>
 
@@ -250,7 +270,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
             <View style={styles.centerContainer}>
               <ActivityIndicator size="large" color={colors.accentAction} />
               <Text style={styles.loadingText}>
-                {t('terminal.selection.loading', 'Loading terminals...')}
+                {t('terminal.selection.loading')}
               </Text>
             </View>
           )}
@@ -259,17 +279,17 @@ export function TerminalSelectionScreen(): React.ReactElement {
             <View style={styles.errorContainer}>
               <Text style={styles.errorTitle}>
                 {error === 'terminals_permission_denied'
-                  ? t('terminal.selection.permissionDenied', 'Permission denied')
+                  ? t('terminal.selection.permissionDenied')
                   : error === 'terminals_empty'
-                    ? t('terminal.selection.empty', 'No terminals available')
-                    : t('terminal.selection.error', 'Failed to load terminals')}
+                    ? t('terminal.selection.empty')
+                    : t('terminal.selection.error')}
               </Text>
               <Text style={styles.errorMessage}>
                 {error === 'terminals_permission_denied'
-                  ? t('terminal.selection.permissionDeniedMsg', 'You do not have permission to view terminals.')
+                  ? t('terminal.selection.permissionDeniedMsg')
                   : error === 'terminals_empty'
-                    ? t('terminal.selection.emptyMsg', 'No active terminals have been created yet.')
-                    : t('terminal.selection.errorMsg', 'Please try again later or contact support.')}
+                    ? t('terminal.selection.emptyMsg')
+                    : t('terminal.selection.errorMsg')}
               </Text>
               {error !== 'terminals_permission_denied' && (
                 <TouchableOpacity
@@ -279,7 +299,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
                   }}
                 >
                   <Text style={styles.retryButtonText}>
-                    {t('terminal.selection.retry', 'Retry')}
+                    {t('terminal.selection.retry')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -323,13 +343,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.md,
   },
   header: {
-    marginBottom: theme.spacing.xl,
-  },
-  title: {
-    fontSize: theme.typography.fontSize.xl,
-    fontWeight: theme.typography.fontWeight.bold,
-    color: colors.textPrimary,
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.lg,
   },
   subtitle: {
     fontSize: theme.typography.fontSize.base,
@@ -397,8 +411,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: theme.spacing.md,
   },
-  terminalImage: {
+  terminalImageText: {
     fontSize: 32,
+    marginRight: theme.spacing.md,
+  },
+  terminalImageIcon: {
     marginRight: theme.spacing.md,
   },
   terminalName: {
@@ -420,10 +437,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  statusBadgeText: {
-    color: colors.textInverse,
-    fontWeight: theme.typography.fontWeight.bold,
   },
   terminalLocation: {
     fontSize: theme.typography.fontSize.sm,

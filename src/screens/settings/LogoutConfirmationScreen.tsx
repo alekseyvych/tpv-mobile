@@ -56,9 +56,6 @@ export function LogoutConfirmationScreen({ onBack, onDone, embedded = false }: P
               variant="danger"
               fullWidth
             />
-            {!embedded && onBack ? (
-              <Button title={t('common.back')} onPress={onBack} disabled={busy} variant="secondary" fullWidth />
-            ) : null}
           </View>
         </Card>
   );
@@ -69,7 +66,7 @@ export function LogoutConfirmationScreen({ onBack, onDone, embedded = false }: P
 
   return (
     <ScreenPage>
-      <Topbar title={t('settings.logoutTitle')} />
+      <Topbar title={t('settings.logoutTitle')} onBack={onBack} />
       <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );

@@ -19,12 +19,15 @@ type Props = {
 };
 
 export function ReceiptScreen({ onDone }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { lastSaleId } = useSaleFlow();
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<ReceiptDto | null>(null);
   const currentReceipt = receipt && receipt.saleId === lastSaleId ? receipt : null;
+  const formatAmount = (value: number) =>
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(value);
 
   useEffect(() => {
     if (!lastSaleId) {
@@ -37,7 +40,7 @@ export function ReceiptScreen({ onDone }: Props) {
       void getSaleReceipt(lastSaleId)
         .then((data) => setReceipt(data))
         .catch(() => {
-          setError(t('pos.receiptLoadError', 'Receipt details could not be loaded.'));
+          setError(t('pos.receiptLoadError'));
         })
         .finally(() => {
           setLoading(false);
@@ -60,18 +63,18 @@ export function ReceiptScreen({ onDone }: Props) {
 
           {currentReceipt ? (
             <View style={styles.block}>
-              <MetaText>{`${t('pos.receiptNumberLabel', 'Receipt number')}: ${currentReceipt.receiptNumber ?? currentReceipt.saleNumber}`}</MetaText>
+              <MetaText>{`${t('pos.receiptNumberLabel')}: ${currentReceipt.receiptNumber ?? currentReceipt.saleNumber}`}</MetaText>
               {currentReceipt.lines.map((line) => (
                 <View key={`${line.productName}-${line.quantity}`} style={styles.lineRow}>
                   <BodyText>{`${line.quantity} x ${line.productName}`}</BodyText>
-                  <MetaText>{`${line.lineTotal.toFixed(2)} EUR`}</MetaText>
+                  <MetaText>{formatAmount(line.lineTotal)}</MetaText>
                 </View>
               ))}
-              <MetaText>{`${t('pos.subtotalLabel', 'Subtotal')}: ${currentReceipt.subtotal.toFixed(2)} EUR`}</MetaText>
-              <MetaText>{`${t('pos.taxLabel', 'Tax')}: ${currentReceipt.tax.toFixed(2)} EUR`}</MetaText>
-              <BodyText>{`${t('pos.totalLabel')}: ${currentReceipt.total.toFixed(2)} EUR`}</BodyText>
+              <MetaText>{`${t('pos.subtotalLabel')}: ${formatAmount(currentReceipt.subtotal)}`}</MetaText>
+              <MetaText>{`${t('pos.taxLabel')}: ${formatAmount(currentReceipt.tax)}`}</MetaText>
+              <BodyText>{`${t('pos.totalLabel')}: ${formatAmount(currentReceipt.total)}`}</BodyText>
               {currentReceipt.payments.map((payment, index) => (
-                <MetaText key={`${payment.method}-${index}`}>{`${t('pos.paymentLabel', 'Payment')} ${payment.method}: ${payment.amount.toFixed(2)} EUR`}</MetaText>
+                <MetaText key={`${payment.method}-${index}`}>{`${t('pos.paymentLabel')} ${payment.method}: ${formatAmount(payment.amount)}`}</MetaText>
               ))}
             </View>
           ) : null}

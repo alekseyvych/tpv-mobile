@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { I18nextProvider } from 'react-i18next';
 
@@ -55,10 +55,25 @@ describe('KitchenDisplayScreen', () => {
 
     expect(view.getAllByText(/Kitchen display|Pantalla de cocina/).length).toBeGreaterThan(0);
     expect(view.getByText('Burger')).toBeTruthy();
+    expect(view.getByText(/Table: 5|Mesa: 5/)).toBeTruthy();
 
     const topbar = view.getByTestId('topbar-container');
     const style = StyleSheet.flatten(topbar.props.style);
     expect(style.paddingTop).toBe(theme.spacing.s3 + 24);
+  });
+
+  it('opens and closes kitchen timing legend modal', () => {
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <KitchenDisplayScreen onBack={() => undefined} />
+      </I18nextProvider>
+    );
+
+    fireEvent.press(view.getByLabelText(/Show kitchen timing legend|Mostrar leyenda de tiempos de cocina/));
+    expect(view.getByText(/Kitchen timing legend|Leyenda de tiempos de cocina/)).toBeTruthy();
+
+    fireEvent.press(view.getByText(/Close|Cerrar|common\.close/));
+    expect(view.queryByText(/Kitchen timing legend|Leyenda de tiempos de cocina/)).toBeNull();
   });
 
   it('renders loading state text', () => {

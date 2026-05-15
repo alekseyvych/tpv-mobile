@@ -129,7 +129,7 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
             variant="secondary"
             fullWidth
           />
-          {canManageDeviceContext ? (
+          {embedded && canManageDeviceContext ? (
             <Button
               title={busy ? t('common.loading') : t('settings.deviceContextSaveAction')}
               onPress={() => void onSave()}
@@ -147,7 +147,6 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
             />
           ) : null}
           {!canManageDeviceContext ? <BodyText>{t('settings.deviceContextRoleHint')}</BodyText> : null}
-          {!embedded && onBack ? <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth /> : null}
         </View>
       </Card>
     </>
@@ -159,7 +158,15 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('settings.deviceInfoTitle')} />
+      <Topbar
+        title={t('settings.deviceInfoTitle')}
+        onBack={onBack}
+        rightActionLabel={canManageDeviceContext ? (busy ? t('common.loading') : t('settings.deviceContextSaveAction')) : undefined}
+        onRightAction={canManageDeviceContext ? (() => {
+          void onSave();
+        }) : undefined}
+        rightActionDisabled={busy}
+      />
       <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );

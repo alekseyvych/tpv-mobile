@@ -57,19 +57,19 @@ export function HomeRecentActivity(): React.ReactElement {
 
       {loading && (
         <View style={styles.loadingCard}>
-          <Text style={styles.loadingText}>{t('home.activity.loading', 'Loading activity...')}</Text>
+          <Text style={styles.loadingText}>{t('home.activity.loading')}</Text>
         </View>
       )}
 
       {error && (
         <View style={styles.errorCard}>
-          <Text style={styles.errorText}>{t(error, 'Activity unavailable')}</Text>
+          <Text style={styles.errorText}>{t(error)}</Text>
         </View>
       )}
 
       {!loading && !error && activities.length === 0 && (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>{t('home.activity.empty', 'No recent activity')}</Text>
+          <Text style={styles.emptyText}>{t('home.activity.empty')}</Text>
         </View>
       )}
 
@@ -91,14 +91,17 @@ interface ActivityItemProps {
 }
 
 function ActivityItem({ entry }: ActivityItemProps) {
+  const { i18n } = useTranslation();
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
+
   const formatTime = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDate = (date: Date | string) => {
     const d = typeof date === 'string' ? new Date(date) : date;
-    return d.toLocaleDateString('es-ES');
+    return d.toLocaleDateString(locale);
   };
 
   return (

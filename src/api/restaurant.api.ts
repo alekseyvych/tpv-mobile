@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Restaurant API Client for Mobile
  *
  * Mobile adapter for:
@@ -271,6 +271,22 @@ export const restaurantApi = {
   },
 
   /**
+   * Update order fields such as party size, notes, or status.
+   *
+   * PATCH /restaurant/orders/:id
+   */
+  updateOrder: async (
+    orderId: string,
+    body: { partySize?: number; notes?: string; status?: string }
+  ): Promise<RestaurantOrder> => {
+    const response = await apiClient.patch<Record<string, unknown>>(
+      `/restaurant/orders/${orderId}`,
+      body
+    )
+    return normalizeOrder(response.data)
+  },
+
+  /**
    * Remove item from order
    *
    * DELETE /restaurant/orders/:orderId/items/:itemId
@@ -351,15 +367,11 @@ export const restaurantApi = {
   getOpenPosSaleResume: async (
     orderId: string
   ): Promise<{ saleId: string; orderItemIdToSaleLineId: Record<string, string> } | null> => {
-    try {
-      const response = await apiClient.get<{
-        saleId: string
-        orderItemIdToSaleLineId: Record<string, string>
-      }>(`/restaurant/orders/${orderId}/open-pos-sale-resume`)
-      return response.data
-    } catch {
-      return null
-    }
+    const response = await apiClient.get<{
+      saleId: string
+      orderItemIdToSaleLineId: Record<string, string>
+    } | null>(`/restaurant/orders/${orderId}/open-pos-sale-resume`)
+    return response.data
   },
 
   /**
@@ -382,7 +394,7 @@ export const restaurantApi = {
     return response.data
   },
 
-  /** GET /restaurant/zone-layouts — fetch all zone layout configs for the tenant. */
+  /** GET /restaurant/zone-layouts â€” fetch all zone layout configs for the tenant. */
   getZoneLayouts: async (): Promise<ZoneLayoutConfig[]> => {
     try {
       const response = await apiClient.get<ZoneLayoutConfig[]>('/restaurant/zone-layouts')
@@ -391,7 +403,17 @@ export const restaurantApi = {
     } catch {
       return []
     }
-  }
+  },
+
+  /** Join multiple tables into a group. POST /restaurant/tables/join */
+  joinTables: async (tableIds: string[]): Promise<void> => {
+    await apiClient.post('/restaurant/tables/join', { tableIds })
+  },
+
+  /** Split a joined table group. POST /restaurant/tables/join/split */
+  splitJoinGroup: async (joinGroupId: string): Promise<void> => {
+    await apiClient.post('/restaurant/tables/join/split', { joinGroupId })
+  },
 }
 
 export type ZoneLayoutConfig = {

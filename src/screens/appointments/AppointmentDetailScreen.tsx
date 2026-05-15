@@ -193,13 +193,18 @@ export function AppointmentDetailScreen({ appointmentId, onBack, onUpdated }: Pr
 
   return (
     <ScreenPage>
-      <Topbar title={t('appointments.detailTitle')} />
+      <Topbar
+        title={t('appointments.detailTitle')}
+        onBack={onBack}
+        rightActionLabel={saving ? t('common.loading') : t('appointments.saveAction')}
+        onRightAction={() => {
+          void onSave();
+        }}
+        rightActionDisabled={saving || !item}
+      />
       <ScreenContent>
         <Card>
           <SectionHeader title={t('appointments.detailTitle')} subtitle={item?.customerName || appointmentId} />
-          <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} variant="secondary" />
-          </View>
         </Card>
 
         {loading ? (
@@ -301,7 +306,6 @@ export function AppointmentDetailScreen({ appointmentId, onBack, onUpdated }: Pr
             {requestError ? <ErrorText style={styles.error}>{requestError}</ErrorText> : null}
 
             <View style={styles.rowWrap}>
-              <Button title={t('appointments.saveAction')} onPress={() => void onSave()} disabled={saving} />
               <Button title={t('appointments.remindAction')} onPress={() => void onRemind()} variant="secondary" disabled={saving} />
               <Button title={t('appointments.cancelAction')} onPress={() => void onCancel()} variant="danger" disabled={saving || status === 'cancelled'} />
             </View>

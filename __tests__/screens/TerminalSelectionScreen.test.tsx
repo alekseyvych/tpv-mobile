@@ -1,8 +1,11 @@
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { I18nextProvider } from 'react-i18next';
 
 import { TerminalSelectionScreen } from '@/features/terminal-selection/screens/TerminalSelectionScreen';
 import { useTerminalStore } from '@/store/terminal.store';
 import { getTerminals } from '@/api/terminals.api';
+import { getActiveCashShift } from '@/api/cashShifts.api';
+import i18n from '@/i18n/config';
 
 const mockReplace = jest.fn();
 
@@ -16,10 +19,16 @@ jest.mock('@/api/terminals.api', () => ({
   getTerminals: jest.fn(),
 }));
 
+jest.mock('@/api/cashShifts.api', () => ({
+  getActiveCashShift: jest.fn(),
+  openCashShift: jest.fn(),
+}));
+
 describe('TerminalSelectionScreen', () => {
   beforeEach(() => {
     mockReplace.mockReset();
     (getTerminals as jest.Mock).mockReset();
+    (getActiveCashShift as jest.Mock).mockReset();
     act(() => {
       useTerminalStore.getState().clearSelected();
     });
@@ -40,8 +49,13 @@ describe('TerminalSelectionScreen', () => {
         updatedAt: new Date().toISOString(),
       },
     ]);
+    (getActiveCashShift as jest.Mock).mockResolvedValue({ id: 'shift-1' });
 
-    const view = render(<TerminalSelectionScreen />);
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TerminalSelectionScreen />
+      </I18nextProvider>
+    );
 
     await waitFor(() => {
       expect(view.getByText('Main POS')).toBeTruthy();
@@ -72,8 +86,13 @@ describe('TerminalSelectionScreen', () => {
         updatedAt: new Date().toISOString(),
       },
     ]);
+    (getActiveCashShift as jest.Mock).mockResolvedValue({ id: 'shift-2' });
 
-    const view = render(<TerminalSelectionScreen />);
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TerminalSelectionScreen />
+      </I18nextProvider>
+    );
 
     await waitFor(() => {
       expect(view.getByText('Dining POS')).toBeTruthy();
@@ -89,7 +108,11 @@ describe('TerminalSelectionScreen', () => {
   it('shows empty state when no terminals are available', async () => {
     (getTerminals as jest.Mock).mockResolvedValue([]);
 
-    const view = render(<TerminalSelectionScreen />);
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TerminalSelectionScreen />
+      </I18nextProvider>
+    );
 
     await waitFor(() => {
       expect(view.getByText('No terminals available')).toBeTruthy();
@@ -99,7 +122,11 @@ describe('TerminalSelectionScreen', () => {
   it('shows permission denied message on 403', async () => {
     (getTerminals as jest.Mock).mockRejectedValue(new Error('terminals_permission_denied'));
 
-    const view = render(<TerminalSelectionScreen />);
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TerminalSelectionScreen />
+      </I18nextProvider>
+    );
 
     await waitFor(() => {
       expect(view.getByText('Permission denied')).toBeTruthy();
@@ -123,7 +150,11 @@ describe('TerminalSelectionScreen', () => {
       },
     ]);
 
-    const view = render(<TerminalSelectionScreen />);
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TerminalSelectionScreen />
+      </I18nextProvider>
+    );
 
     await waitFor(() => {
       expect(view.getByText('Offline POS')).toBeTruthy();

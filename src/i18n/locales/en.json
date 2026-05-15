@@ -5,11 +5,16 @@
     "home": "Home",
     "settings": "Settings",
     "logout": "Logout",
+    "cancel": "Cancel",
+    "done": "Done",
     "placeholder": "Placeholder screen",
     "back": "Back",
     "retry": "Retry",
     "dismiss": "Dismiss",
-    "loading": "Loading..."
+    "remove": "Remove",
+    "loading": "Loading...",
+    "selectAll": "Select all",
+    "selectNone": "None"
   },
   "auth": {
     "title": "Sign in",
@@ -30,7 +35,19 @@
     "pinLengthError": "PIN must be exactly 4 digits",
     "invalidPin": "Invalid PIN",
     "loginWithPin": "Login with PIN",
-    "loginWithQuickAccess": "Login with quick access"
+    "loginWithQuickAccess": "Login with quick access",
+    "selectProfile": "Select profile"
+  },
+  "header": {
+    "userMenu": {
+      "title": "User menu",
+      "options": "Options",
+      "logout": "Log out",
+      "swapAccount": "Swap account",
+      "swapTitle": "Swap account",
+      "swapDescription": "Choose a staff profile and enter PIN to continue.",
+      "swapBlockedUnsafeCardRuntime": "Account swap is blocked while card terminal runtime is active. Finish or cancel the card flow first."
+    }
   },
   "context": {
     "checkingTitle": "Checking device context",
@@ -117,6 +134,13 @@
     "noOrderItems": "Add items to the order",
     "addItems": "Add items",
     "checkout": "Checkout",
+    "checkoutShiftMissing": "No active cash shift is open for this terminal. Open a shift before checkout.",
+    "checkoutRecoverMissingSale": "No open payment sale was found for this order. Verify the order state from dining floor.",
+    "checkoutRecoverPending": "Payment is still pending or failed. Retry payment or cancel checkout.",
+    "checkoutPaidSuccess": "Payment completed and table/order state has been updated.",
+    "checkoutRecoverAction": "Recover unknown payment state",
+    "resumeCheckout": "Resume checkout",
+    "paymentLockedByOtherTerminal": "This order is locked for payment by another terminal.",
     "quantity": "Quantity",
     "notes": "Special instructions",
     "notesPlaceholder": "No onions, extra sauce, etc.",
@@ -124,8 +148,15 @@
     "extras": "Add extras",
     "addToOrder": "Add to order",
     "adding": "Adding...",
+    "addItemFallbackError": "Failed to add item",
     "searchProducts": "Search products",
     "noProducts": "No products found",
+    "item": "Item",
+    "items": "items",
+    "viewList": "List",
+    "viewMap": "Map",
+    "hideLegend": "Hide legend",
+    "showLegend": "Show legend",
     "searchNoResults": "No products match your search",
     "preparing": "Mark as preparing",
     "ready": "Mark as ready",
@@ -137,12 +168,15 @@
     "navTitle": "Kitchen",
     "title": "Kitchen display",
     "description": "Track pending kitchen items and mark them ready.",
+    "orderAge": "Oldest item: {{minutes}} min",
     "stations": {
       "kitchen": "Kitchen",
       "bar": "Bar",
       "all": "All"
     },
     "statusLabel": "Status",
+    "table": "Table",
+    "qty": "Qty",
     "tableQty": "Table {{table}} • Qty: {{qty}}",
     "elapsedMinutes": "Waiting {{minutes}} min",
     "priorityLabel": "Priority: {{priority}}",
@@ -163,7 +197,15 @@
     "noItemsByStatus": "No items in {{status}}",
     "loadError": "Failed to load kitchen items",
     "markReadyError": "Failed to mark item as ready",
-    "permissionError": "You do not have permission to access kitchen operations"
+    "permissionError": "You do not have permission to access kitchen operations",
+    "legend": {
+      "openAria": "Show kitchen timing legend",
+      "title": "Kitchen timing legend",
+      "green": "Green 0–10 min — on schedule",
+      "yellow": "Yellow 10–20 min — getting delayed",
+      "red": "Red 20+ min — needs attention",
+      "footnote": "Elapsed time is measured since the item entered the kitchen queue."
+    }
   },
   "pos": {
     "navTitle": "POS",
@@ -175,15 +217,79 @@
     "goPayment": "Go to payment",
     "paymentTitle": "Payment",
     "paymentDescription": "Select a payment method for this sale.",
+    "subtotalLabel": "Subtotal",
+    "taxLabel": "Tax",
     "payCash": "Pay cash",
     "payCard": "Pay card",
+    "payMixed": "Pay mixed",
+    "enterCashAmount": "Enter cash amount",
+    "cashTendered": "Cash tendered",
+    "changeLabel": "Change",
+    "preparingSale": "Preparing...",
+    "confirmPayment": "Confirm payment",
+    "startCardPayment": "Start card payment",
+    "cardCancelledTitle": "Card payment cancelled",
+    "cardCancelledMessage": "Choose another payment method.",
+    "mixedCashPrompt": "Cash portion",
+    "cardRemainderLabel": "Card remainder",
+    "prepareSaleError": "Unable to prepare sale. Check connection and retry.",
+    "prepareSaleBeforePaymentError": "Unable to prepare sale before payment.",
+    "mixedAmountError": "Mixed payment requires a positive cash and card amount.",
     "paymentError": "Payment failed. Please retry.",
+    "cardTerminalProfileMissingTitle": "Card Terminal Not Configured",
+    "cardTerminalProfileMissingMessage": "Terminal {{terminal}} has no payment terminal profile configured. Please ask an admin to configure it.",
+    "catalogLoadError": "Catalog could not be loaded.",
+    "searchPlaceholder": "Search products...",
+    "allCategories": "All",
+    "noProducts": "No products found",
     "receiptTitle": "Receipt",
+    "receiptLoadError": "Receipt details could not be loaded.",
     "receiptStatusReady": "Sale complete",
+    "receiptNumberLabel": "Receipt number",
     "saleIdLabel": "Sale ID",
+    "paymentLabel": "Payment",
     "cloudReceiptHint": "Receipt is available from cloud history.",
     "newSale": "Start new sale",
-    "totalLabel": "Total"
+    "totalLabel": "Total",
+    "card": {
+      "loadingTerminals": "Loading terminals...",
+      "selectTerminal": "Select terminal",
+      "selectTerminalDescription": "Choose the card terminal for this payment.",
+      "transactionInProgress": "Card payment in progress",
+      "statePending": "Pending",
+      "stateConnecting": "Connecting",
+      "stateWaiting": "Waiting",
+      "stateProcessing": "Processing",
+      "cancelTransaction": "Cancel transaction",
+      "approved": "Payment approved",
+      "approvedDescription": "The card payment was approved. Continue to print the receipt.",
+      "continueToReceipt": "Continue to receipt",
+      "declined": "Payment declined",
+      "declinedDescription": "The card payment was declined. You can retry or pay another way.",
+      "providerOutcome": "Reason",
+      "cancelled": "Payment cancelled",
+      "cancelledDescription": "The card payment was cancelled. You can retry or pay another way.",
+      "unknownOutcome": "Unknown outcome",
+      "unknownOutcomeDescription": "The terminal response was unclear. Check the terminal and retry.",
+      "fallbackToExternal": "Pay on external terminal"
+    },
+    "tpvSim": {
+      "title": "Terminal Simulator (dev)",
+      "description": "Select outcome for this active card transaction.",
+      "actions": {
+        "simulate": "Simulate"
+      },
+      "delay": {
+        "instant": "Instant"
+      }
+    },
+    "tpvOutcomes": {
+      "approved": "Approved",
+      "declined": "Declined",
+      "cancelled_by_customer": "Cancelled by customer",
+      "terminal_timeout": "Terminal timeout",
+      "unknown_result": "Unknown result"
+    }
   },
     "card": {
       "loadingTerminals": "Loading terminals...",
@@ -291,6 +397,44 @@
     "queuedCount": "Queued: {{count}}",
     "failedCount": "Failed: {{count}}"
   },
+  "terminalSelection": {
+    "required": "Select a terminal before payment."
+  },
+  "terminal": {
+    "selection": {
+      "title": "Select Terminal",
+      "subtitle": "Choose a POS terminal to begin",
+      "loading": "Loading terminals...",
+      "permissionDenied": "Permission denied",
+      "permissionDeniedMsg": "You do not have permission to view terminals.",
+      "empty": "No terminals available",
+      "emptyMsg": "No active terminals have been created yet.",
+      "error": "Failed to load terminals",
+      "errorMsg": "Please try again later or contact support.",
+      "retry": "Retry",
+      "modeRestaurant": "Restaurant",
+      "modePersonalized": "Personalized",
+      "modeRetail": "Retail",
+      "lastUsed": "Last",
+      "selected": "Selected"
+    }
+  },
+  "shift": {
+    "open": {
+      "title": "Open Cash Shift",
+      "terminal": "Terminal: {{name}}",
+      "description": "Enter the opening cash balance to begin working on this terminal.",
+      "openingBalance": "Opening balance (EUR)",
+      "invalidBalance": "Enter a valid opening balance (0 or more)",
+      "error": "Could not open shift. Please try again.",
+      "confirm": "Open Shift"
+    }
+  },
+  "payment": {
+    "errors": {
+      "noItems": "No items to charge."
+    }
+  },
   "settings": {
     "profileTitle": "Profile",
     "profileDescription": "Review your authenticated account and security options.",
@@ -343,7 +487,9 @@
     "logoutThisDevice": "Logout this device",
     "logoutAllDevices": "Logout all devices",
     "factoryReset": "Factory reset",
-    "appVersionLabel": "App version"
+    "appVersionLabel": "App version",
+    "permissionsTitle": "Permissions",
+    "permissionsCameraLabel": "Camera"
   },
   "inactivity": {
     "title": "Session timeout",
@@ -394,14 +540,20 @@
       "dailySales": "Daily Sales",
       "ticketCount": "Tickets",
       "averageTicket": "Avg Ticket",
-      "productsSold": "Products Sold"
+      "productsSold": "Products Sold",
+      "loading": "Loading metrics...",
+      "permissionDenied": "Metrics unavailable for your role",
+      "loadError": "Metrics unavailable"
     },
     "activity": {
       "title": "Recent activity",
       "recentSales": "Recent sales",
       "recentProducts": "Recent products",
       "recentCustomers": "Recent customers",
-      "empty": "No recent operational activity yet."
+      "empty": "No recent operational activity yet.",
+      "loading": "Loading activity...",
+      "permissionDenied": "Activity unavailable for your role",
+      "loadError": "Activity unavailable"
     }
   },
   "layout": {

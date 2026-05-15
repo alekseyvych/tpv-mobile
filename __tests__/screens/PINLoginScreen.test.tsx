@@ -34,8 +34,7 @@ describe('PINLoginScreen', () => {
       expect(mockLoadQuickAccessProfiles).toHaveBeenCalled();
     });
 
-    const quickAccessButtons = view.getAllByText(/Quick access|Acceso rápido/);
-    fireEvent.press(quickAccessButtons[quickAccessButtons.length - 1]);
+    fireEvent.press(view.getByText(/Done|Listo/));
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '123');
     fireEvent.press(view.getAllByText(/Login with quick access|Entrar con acceso rápido/)[0]);
 
@@ -59,8 +58,7 @@ describe('PINLoginScreen', () => {
       expect(view.getAllByText(/Ana Lopez/).length).toBeGreaterThan(0);
     });
 
-    const quickAccessButtons = view.getAllByText(/Quick access|Acceso rápido/);
-    fireEvent.press(quickAccessButtons[quickAccessButtons.length - 1]);
+    fireEvent.press(view.getByText(/Done|Listo/));
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '1234');
     fireEvent.press(view.getAllByText(/Login with quick access|Entrar con acceso rápido/)[0]);
 

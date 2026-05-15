@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
 import type { KitchenPrepStation } from '@/api/kitchen.api';
 import { Button } from '@/components/Button';
@@ -17,6 +17,12 @@ type Props = {
   onBack: () => void;
 };
 
+function getTimingBorderColor(elapsedMinutes: number): string {
+  if (elapsedMinutes >= 20) return '#ef4444';
+  if (elapsedMinutes >= 10) return '#f59e0b';
+  return '#10b981';
+}
+
 export function KitchenDisplayScreen({ onBack }: Props) {
   const { t } = useTranslation();
   const { items, station, loading, loadKitchenOrders, changeStation, advanceItemStatus } =
@@ -24,6 +30,7 @@ export function KitchenDisplayScreen({ onBack }: Props) {
   const { isPhone } = useDeviceProfile();
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [legendVisible, setLegendVisible] = useState(false);
 
   function nextStatus(status: KitchenDisplayItem['status']): KitchenDisplayItem['status'] | null {
     if (status === 'pending') return 'preparing';
@@ -62,6 +69,14 @@ export function KitchenDisplayScreen({ onBack }: Props) {
       }
     }
     void load();
+
+    const refreshTimer = setInterval(() => {
+      void loadKitchenOrders();
+    }, 12_000);
+
+    return () => {
+      clearInterval(refreshTimer);
+    };
   }, [loadKitchenOrders, t]);
 
   const handleAdvance = async (item: KitchenDisplayItem) => {
@@ -105,12 +120,46 @@ export function KitchenDisplayScreen({ onBack }: Props) {
     }
   };
 
+  // Group items by table for phone view
+  const groupedByTable = useMemo(() => {
+    const groups: { [tableNumber: string]: KitchenDisplayItem[] } = {};
+    items.forEach((item) => {
+      if (!groups[item.tableNumber]) {
+        groups[item.tableNumber] = [];
+      }
+      groups[item.tableNumber].push(item);
+    });
+    return Object.entries(groups)
+      .map(([tableNumber, tableItems]) => ({
+        tableNumber,
+        items: tableItems,
+        maxElapsedMinutes: Math.max(...tableItems.map((i) => i.elapsedMinutes)),
+      }))
+      .sort((a, b) => b.maxElapsedMinutes - a.maxElapsedMinutes);
+  }, [items]);
+
   return (
     <ScreenPage>
-      <Topbar title={t('kitchen.title')} />
+      <Topbar
+        title={t('kitchen.title')}
+        onBack={onBack}
+        rightActionLabel={t('common.retry')}
+        onRightAction={() => void loadKitchenOrders()}
+        rightActionDisabled={loading || processingId !== null}
+      />
       <ScreenContent>
         <Card>
-          <TitleText>{t('kitchen.title')}</TitleText>
+          <View style={styles.cardHeaderRow}>
+            <TitleText>{t('kitchen.title')}</TitleText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('kitchen.legend.openAria')}
+              onPress={() => setLegendVisible(true)}
+              style={styles.legendButton}
+            >
+              <BodyText style={styles.legendButtonText}>i</BodyText>
+            </Pressable>
+          </View>
           <BodyText style={styles.description}>{loading ? t('common.loading') : t('kitchen.description')}</BodyText>
           {error ? <ErrorText style={styles.error}>{error}</ErrorText> : null}
           <View style={styles.stationTabs}>
@@ -125,44 +174,49 @@ export function KitchenDisplayScreen({ onBack }: Props) {
               />
             ))}
           </View>
-          <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} disabled={loading || processingId !== null} variant="secondary" />
-            <Button title={t('common.retry')} onPress={() => void loadKitchenOrders()} disabled={loading || processingId !== null} variant="secondary" />
-          </View>
         </Card>
 
         <FlatList
           scrollEnabled={isPhone}
           style={isPhone ? styles.list : styles.kanbanBoard}
-          data={isPhone ? (items as (KitchenDisplayItem | string)[]) : (statuses as (KitchenDisplayItem | string)[])}
-          keyExtractor={(item: KitchenDisplayItem | string) => (typeof item === 'string' ? item : item.id)}
-          renderItem={({ item: statusOrItem }: { item: KitchenDisplayItem | string }) => {
+          data={isPhone ? (groupedByTable as (typeof groupedByTable[number] | string)[]) : (statuses as string[])}
+          keyExtractor={(item: typeof groupedByTable[number] | string) => (typeof item === 'string' ? item : `table-${item.tableNumber}`)}
+          renderItem={({ item: statusOrTableGroup }: { item: typeof groupedByTable[number] | string }) => {
             if (isPhone) {
-              const item = statusOrItem as KitchenDisplayItem;
-              const next = nextStatus(item.status);
+              const tableGroup = statusOrTableGroup as typeof groupedByTable[number];
               return (
-                <ListItemCard>
-                  <MetaText style={styles.itemTitle}>{item.productName}</MetaText>
-                  <BodyText style={styles.itemMeta}>{t('kitchen.tableQty', { table: item.tableNumber, qty: item.quantity })}</BodyText>
-                  <BodyText style={styles.itemMeta}>{t('kitchen.statusLabel')}: {t(`kitchen.status.${item.status}`)}</BodyText>
-                  <BodyText style={styles.itemMeta}>{formatElapsed(item.elapsedMinutes)}</BodyText>
-                  {item.notes ? <BodyText style={styles.itemNotes}>{item.notes}</BodyText> : null}
-                  <MetaText style={styles.itemPriority}>{t('kitchen.priorityLabel', { priority: t(`kitchen.priority.${priorityFromElapsed(item.elapsedMinutes)}`) })}</MetaText>
-                  <View style={styles.itemActions}>
-                    {next ? (
-                      <Button
-                        title={t('kitchen.advanceTo', { status: t(`kitchen.status.${next}`) })}
-                        onPress={() => void handleAdvance(item)}
-                        disabled={processingId === item.id}
-                        variant="secondary"
-                        fullWidth
-                      />
-                    ) : null}
+                <Card style={styles.tableCard}>
+                  <TitleText style={styles.tableTitle}>{t('kitchen.table')}: {tableGroup.tableNumber}</TitleText>
+                  <MetaText style={styles.tableAgeText}>{t('kitchen.orderAge', { minutes: tableGroup.maxElapsedMinutes })}</MetaText>
+                  <View style={styles.tableItemsList}>
+                    {tableGroup.items.map((item) => {
+                      const next = nextStatus(item.status);
+                      const borderColor = getTimingBorderColor(item.elapsedMinutes);
+                      return (
+                        <View key={item.id} style={[styles.tableItem, { borderLeftColor: borderColor }] }>
+                          <MetaText style={styles.itemTitle}>{item.productName}</MetaText>
+                          <BodyText style={styles.itemMeta}>{t('kitchen.qty')}: {item.quantity}</BodyText>
+                          <BodyText style={styles.itemMeta}>{t('kitchen.statusLabel')}: {t(`kitchen.status.${item.status}`)}</BodyText>
+                          <BodyText style={styles.itemMeta}>{formatElapsed(item.elapsedMinutes)}</BodyText>
+                          {item.notes ? <BodyText style={styles.itemNotes}>{item.notes}</BodyText> : null}
+                          {next ? (
+                            <Button
+                              title={t('kitchen.advanceTo', { status: t(`kitchen.status.${next}`) })}
+                              onPress={() => void handleAdvance(item)}
+                              disabled={processingId === item.id}
+                              variant="secondary"
+                              fullWidth
+                              style={styles.itemActionButton}
+                            />
+                          ) : null}
+                        </View>
+                      );
+                    })}
                   </View>
-                </ListItemCard>
+                </Card>
               );
             } else {
-              const status = statusOrItem as string;
+              const status = statusOrTableGroup as string;
               const columnItems = items.filter((i) => i.status === status);
               const typedStatus = status as KitchenDisplayItem['status'];
               const statusLabel = t(`kitchen.status.${typedStatus}`);
@@ -175,7 +229,12 @@ export function KitchenDisplayScreen({ onBack }: Props) {
                     data={columnItems}
                     keyExtractor={(item) => item.id}
                     renderItem={({ item }) => (
-                      <ListItemCard style={styles.kanbanCard}>
+                      <ListItemCard
+                        style={[
+                          styles.kanbanCard,
+                          { borderLeftWidth: 4, borderLeftColor: getTimingBorderColor(item.elapsedMinutes) },
+                        ]}
+                      >
                         <MetaText style={styles.itemTitle}>{item.productName}</MetaText>
                         <BodyText style={styles.itemMeta}>{t('kitchen.tableQty', { table: item.tableNumber, qty: item.quantity })}</BodyText>
                         <BodyText style={styles.itemMeta}>{formatElapsed(item.elapsedMinutes)}</BodyText>
@@ -202,22 +261,72 @@ export function KitchenDisplayScreen({ onBack }: Props) {
           }}
           ListEmptyComponent={isPhone ? <BodyText style={styles.empty}>{t('kitchen.noItems')}</BodyText> : undefined}
         />
+
+        <Modal visible={legendVisible} transparent animationType="fade" onRequestClose={() => setLegendVisible(false)}>
+          <Pressable style={styles.legendBackdrop} onPress={() => setLegendVisible(false)}>
+            <View style={styles.legendSheet}>
+              <TitleText style={styles.legendTitle}>{t('kitchen.legend.title')}</TitleText>
+              <BodyText style={styles.legendLine}>{t('kitchen.legend.green')}</BodyText>
+              <BodyText style={styles.legendLine}>{t('kitchen.legend.yellow')}</BodyText>
+              <BodyText style={styles.legendLine}>{t('kitchen.legend.red')}</BodyText>
+              <MetaText style={styles.legendFootnote}>{t('kitchen.legend.footnote')}</MetaText>
+              <Button
+                title={t('common.close')}
+                onPress={() => setLegendVisible(false)}
+                variant="secondary"
+                style={styles.legendCloseButton}
+              />
+            </View>
+          </Pressable>
+        </Modal>
       </ScreenContent>
     </ScreenPage>
   );
 }
 
 const styles = StyleSheet.create({
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.s2,
+  },
+  legendButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.bgPanel,
+  },
+  legendButtonText: {
+    marginBottom: 0,
+    fontWeight: theme.typography.weightBold,
+  },
   description: { marginBottom: theme.spacing.s3 },
   stationTabs: { flexDirection: 'row', gap: theme.spacing.s2, marginBottom: theme.spacing.s3 },
   stationTabButton: { flex: 1 },
-  row: { flexDirection: 'row', gap: theme.spacing.s2 },
   list: { marginTop: theme.spacing.s3 },
+  tableCard: { marginBottom: theme.spacing.s2 },
+  tableTitle: { marginBottom: theme.spacing.s1, fontSize: 16 },
+  tableAgeText: { color: theme.colors.textSecondary, marginBottom: theme.spacing.s2 },
+  tableItemsList: { gap: theme.spacing.s2 },
+  tableItem: {
+    paddingBottom: theme.spacing.s2,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    borderLeftWidth: 4,
+    paddingLeft: theme.spacing.s2,
+  },
+  tableItem_last: { paddingBottom: 0, borderBottomWidth: 0 },
   itemTitle: { marginBottom: 0 },
   itemMeta: { marginBottom: 0, marginTop: theme.spacing.s1 },
   itemNotes: { fontStyle: 'italic', marginBottom: 0, marginTop: theme.spacing.s1 },
   itemPriority: { color: theme.colors.error, marginBottom: 0, marginTop: theme.spacing.s1 },
   itemActions: { marginTop: theme.spacing.s2 },
+  itemActionButton: { marginTop: theme.spacing.s2 },
   empty: { textAlign: 'center', marginTop: theme.spacing.s4 },
   error: { marginTop: 0 },
   kanbanBoard: { flexDirection: 'row', gap: theme.spacing.s3 },
@@ -225,4 +334,30 @@ const styles = StyleSheet.create({
   columnHeader: { marginBottom: theme.spacing.s2, fontSize: 16, fontWeight: '600' },
   kanbanCard: { marginBottom: theme.spacing.s2 },
   columnEmpty: { textAlign: 'center', marginTop: theme.spacing.s2, fontSize: 12 },
+  legendBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    justifyContent: 'flex-end',
+    padding: theme.spacing.s3,
+  },
+  legendSheet: {
+    backgroundColor: theme.colors.bgPanel,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.s4,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  legendTitle: {
+    marginBottom: theme.spacing.s2,
+  },
+  legendLine: {
+    marginBottom: theme.spacing.s1,
+  },
+  legendFootnote: {
+    marginTop: theme.spacing.s1,
+    marginBottom: theme.spacing.s3,
+  },
+  legendCloseButton: {
+    marginTop: theme.spacing.s2,
+  },
 });

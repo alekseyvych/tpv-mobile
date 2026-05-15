@@ -49,7 +49,7 @@ export function OpenShiftModal({
   const handleOpen = async () => {
     const balance = parseFloat(openingBalance.replace(',', '.'));
     if (isNaN(balance) || balance < 0) {
-      setError(t('shift.open.invalidBalance', 'Enter a valid opening balance (0 or more)'));
+      setError(t('shift.open.invalidBalance'));
       return;
     }
 
@@ -68,7 +68,7 @@ export function OpenShiftModal({
         setError(
           typeof msg === 'string'
             ? msg
-            : t('shift.open.error', 'Could not open shift. Please try again.'),
+            : t('shift.open.error'),
         );
       }
     } finally {
@@ -98,21 +98,18 @@ export function OpenShiftModal({
           <Pressable style={styles.card} onPress={() => undefined}>
             {/* Header */}
             <Text style={styles.title}>
-              {t('shift.open.title', 'Open Cash Shift')}
+              {t('shift.open.title')}
             </Text>
             <Text style={styles.subtitle}>
-              {t('shift.open.terminal', 'Terminal: {{name}}', { name: terminalName })}
+              {t('shift.open.terminal', { name: terminalName })}
             </Text>
             <Text style={styles.description}>
-              {t(
-                'shift.open.description',
-                'Enter the opening cash balance to begin working on this terminal.',
-              )}
+              {t('shift.open.description')}
             </Text>
 
             {/* Opening balance input */}
             <Text style={styles.label}>
-              {t('shift.open.openingBalance', 'Opening balance (€)')}
+              {t('shift.open.openingBalance')}
             </Text>
             <TextInput
               style={styles.input}
@@ -141,7 +138,7 @@ export function OpenShiftModal({
                 disabled={loading}
               >
                 <Text style={styles.cancelButtonText}>
-                  {t('common.cancel', 'Cancel')}
+                  {t('common.cancel')}
                 </Text>
               </TouchableOpacity>
 
@@ -154,7 +151,7 @@ export function OpenShiftModal({
                   <ActivityIndicator size="small" color={colors.textInverse} />
                 ) : (
                   <Text style={styles.confirmButtonText}>
-                    {t('shift.open.confirm', 'Open Shift')}
+                    {t('shift.open.confirm')}
                   </Text>
                 )}
               </TouchableOpacity>

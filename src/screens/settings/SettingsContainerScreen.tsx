@@ -49,7 +49,7 @@ export function SettingsContainerScreen({
   if (isPhone) {
     return (
       <ScreenPage>
-        <Topbar title={t('common.settings')} />
+        <Topbar title={t('common.settings')} onBack={onBack} />
         <ScreenContent>
           <Card>
             <TitleText>{t('common.settings')}</TitleText>
@@ -67,7 +67,6 @@ export function SettingsContainerScreen({
                 />
               )}
             />
-            <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth style={styles.phoneAction} />
           </Card>
         </ScreenContent>
       </ScreenPage>
@@ -92,7 +91,7 @@ export function SettingsContainerScreen({
 
   return (
     <ScreenPage>
-      <Topbar title={t('common.settings')} />
+      <Topbar title={t('common.settings')} onBack={onBack} />
       <ScreenContent>
         <View style={styles.tabletSplitPane}>
           {/* Sidebar */}
@@ -113,7 +112,6 @@ export function SettingsContainerScreen({
                   />
                 )}
               />
-              <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth style={styles.tabletNavButton} />
             </Card>
           </View>
 

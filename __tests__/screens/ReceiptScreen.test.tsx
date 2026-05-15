@@ -44,7 +44,7 @@ describe('ReceiptScreen', () => {
 
     await waitFor(() => {
       expect(view.getByText(/2 x Latte/)).toBeTruthy();
-      expect(view.getByText(/Payment CARD: 7.00 EUR/)).toBeTruthy();
+      expect(view.getByText(/Payment CARD:.*7[.,]00/)).toBeTruthy();
     });
   });
 

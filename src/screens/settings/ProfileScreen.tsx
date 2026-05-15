@@ -85,15 +85,16 @@ export function ProfileScreen({ onBack, embedded = false }: Props) {
         />
         {error ? <ErrorText style={styles.message}>{error}</ErrorText> : null}
         {saved ? <BodyText style={styles.saved}>{t('settings.passwordChanged')}</BodyText> : null}
-        <View style={styles.actions}>
-          <Button
-            title={busy ? t('common.loading') : t('settings.passwordChangeAction')}
-            onPress={() => void onSubmit()}
-            disabled={busy}
-            fullWidth
-          />
-          {!embedded && onBack ? <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth /> : null}
-        </View>
+        {embedded ? (
+          <View style={styles.actions}>
+            <Button
+              title={busy ? t('common.loading') : t('settings.passwordChangeAction')}
+              onPress={() => void onSubmit()}
+              disabled={busy}
+              fullWidth
+            />
+          </View>
+        ) : null}
       </Card>
     </>
   );
@@ -104,7 +105,15 @@ export function ProfileScreen({ onBack, embedded = false }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('settings.profileTitle')} />
+      <Topbar
+        title={t('settings.profileTitle')}
+        onBack={onBack}
+        rightActionLabel={busy ? t('common.loading') : t('settings.passwordChangeAction')}
+        onRightAction={() => {
+          void onSubmit();
+        }}
+        rightActionDisabled={busy}
+      />
       <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );

@@ -11,6 +11,7 @@ import { BodyText, ErrorText, MetaText, TitleText } from '@/components/Typograph
 import { theme } from '@/components/theme/theme';
 import { useCardPaymentRuntime } from '@/hooks/useCardPaymentRuntime';
 import { useSaleFlow } from '@/hooks/useSaleFlow';
+import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
 import { useTerminalStore } from '@/store/terminal.store';
 
 type PaymentMethod = 'CASH' | 'CARD' | 'MIXED';
@@ -27,8 +28,9 @@ function toNumber(value: string): number {
 }
 
 export function PaymentScreen({ onPaid, onBack }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const selectedTerminalId = useTerminalStore((state) => state.selectedTerminalId);
+  const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
 
   const {
     total,
@@ -46,6 +48,8 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
   const [method, setMethod] = useState<PaymentMethod>('CASH');
   const [cashAmountInput, setCashAmountInput] = useState('');
   const cardRuntime = useCardPaymentRuntime();
+  const setCardRuntimePhase = usePaymentRuntimeStore((s) => s.setCardRuntimePhase);
+  const resetCardRuntimePhase = usePaymentRuntimeStore((s) => s.resetCardRuntimePhase);
 
   // Run prepareSale once on mount using a ref so changing pendingSale never re-triggers it
   const didPrepare = useState(false);
@@ -56,11 +60,18 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
       .then(() => { setPreparing(false); })
       .catch(() => {
         setPreparing(false);
-        setPrepareError(t('pos.prepareSaleError', 'Unable to prepare sale. Check connection and retry.'));
+        setPrepareError(t('pos.prepareSaleError'));
       });
   // prepareSale ref changes when pendingSale changes — intentionally ignore that
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setCardRuntimePhase(cardRuntime.phase);
+    return () => {
+      resetCardRuntimePhase();
+    };
+  }, [cardRuntime.phase, resetCardRuntimePhase, setCardRuntimePhase]);
 
   function retryPrepareSale() {
     setPreparing(true);
@@ -69,7 +80,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
       .then(() => { setPreparing(false); })
       .catch(() => {
         setPreparing(false);
-        setPrepareError(t('pos.prepareSaleError', 'Unable to prepare sale. Check connection and retry.'));
+        setPrepareError(t('pos.prepareSaleError'));
       });
   }
 
@@ -80,6 +91,8 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
   const cashInput = toNumber(cashAmountInput);
   const cashChange = Math.max(cashInput - serverTotal, 0);
   const mixedCardRemainder = Math.max(serverTotal - (Math.round(cashInput * 100) / 100), 0);
+  const formatAmount = (value: number) =>
+    new Intl.NumberFormat(locale, { style: 'currency', currency: 'EUR' }).format(value);
 
   function selectMethod(m: PaymentMethod) {
     setMethod(m);
@@ -94,7 +107,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
       const saleId = await submitSale('CASH', cashInput > 0 ? cashInput : serverTotal);
       onPaid(saleId);
     } catch {
-      setPayError(t('pos.paymentError', 'Payment failed'));
+      setPayError(t('pos.paymentError'));
     } finally {
       setBusy(false);
     }
@@ -102,11 +115,11 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
 
   function beginCardFlow() {
     if (!pendingSale) {
-      setPayError(t('pos.prepareSaleError', 'Unable to prepare sale before payment.'));
+      setPayError(t('pos.prepareSaleBeforePaymentError'));
       return;
     }
     if (!selectedTerminalId) {
-      setPayError(t('terminalSelection.required', 'Select a terminal before card payment.'));
+      setPayError(t('terminalSelection.required'));
       return;
     }
     setPayError(null);
@@ -118,7 +131,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
     const roundedCard = Math.round((serverTotal - roundedCash) * 100) / 100;
 
     if (roundedCash <= 0 || roundedCard <= 0) {
-      setPayError(t('pos.mixedAmountError', 'Mixed payment requires a positive cash and card amount.'));
+      setPayError(t('pos.mixedAmountError'));
       return;
     }
 
@@ -128,7 +141,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
       const saleId = await submitMixedSale(roundedCash, roundedCard, roundedCash);
       onPaid(saleId);
     } catch {
-      setPayError(t('pos.paymentError', 'Payment failed'));
+      setPayError(t('pos.paymentError'));
     } finally {
       setBusy(false);
     }
@@ -138,7 +151,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pos.paymentTitle')} />
+      <Topbar title={t('pos.paymentTitle')} onBack={onBack} />
       <ScreenContent>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
@@ -146,15 +159,15 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
           {prepareError ? (
             <Card style={styles.prepareErrorCard}>
               <ErrorText>{prepareError}</ErrorText>
-              <Button title={t('common.retry', 'Retry')} onPress={retryPrepareSale} fullWidth />
+              <Button title={t('common.retry')} onPress={retryPrepareSale} fullWidth />
             </Card>
           ) : null}
 
           {/* Order summary */}
           <Card style={styles.summaryCard}>
-            <MetaText style={styles.summaryLine}>{`${t('pos.subtotalLabel', 'Subtotal')}: ${subtotalAmount.toFixed(2)} EUR`}</MetaText>
-            <MetaText style={styles.summaryLine}>{`${t('pos.taxLabel', 'Tax')}: ${taxAmount.toFixed(2)} EUR`}</MetaText>
-            <TitleText style={styles.totalLine}>{`${t('pos.totalLabel')}: ${serverTotal.toFixed(2)} EUR`}</TitleText>
+            <MetaText style={styles.summaryLine}>{`${t('pos.subtotalLabel')}: ${formatAmount(subtotalAmount)}`}</MetaText>
+            <MetaText style={styles.summaryLine}>{`${t('pos.taxLabel')}: ${formatAmount(taxAmount)}`}</MetaText>
+            <TitleText style={styles.totalLine}>{`${t('pos.totalLabel')}: ${formatAmount(serverTotal)}`}</TitleText>
           </Card>
 
           {/* Method selector */}
@@ -167,7 +180,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
                 disabled={busy || cardInProgress}
               >
                 <MetaText style={[styles.methodLabel, method === m && styles.methodLabelActive]}>
-                  {m === 'CASH' ? t('pos.payCash', 'Efectivo') : m === 'CARD' ? t('pos.payCard', 'Tarjeta') : t('pos.payMixed', 'Mixto')}
+                  {m === 'CASH' ? t('pos.payCash') : m === 'CARD' ? t('pos.payCard') : t('pos.payMixed')}
                 </MetaText>
               </Pressable>
             ))}
@@ -178,7 +191,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
           {/* ── CASH section ── */}
           {method === 'CASH' && (
             <Card style={styles.methodCard}>
-              <MetaText>{t('pos.enterCashAmount', 'Amount tendered')}</MetaText>
+              <MetaText>{t('pos.enterCashAmount')}</MetaText>
               <TextInput
                 style={styles.input}
                 value={cashAmountInput}
@@ -188,10 +201,10 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
                 selectTextOnFocus
               />
               {cashInput > 0 && cashChange > 0 ? (
-                <BodyText style={styles.changeRow}>{`${t('pos.changeLabel', 'Change')}: ${cashChange.toFixed(2)} EUR`}</BodyText>
+                <BodyText style={styles.changeRow}>{`${t('pos.changeLabel')}: ${formatAmount(cashChange)}`}</BodyText>
               ) : null}
               <Button
-                title={preparing ? t('pos.preparingSale', 'Preparing…') : t('pos.confirmPayment', 'Confirm payment')}
+                title={preparing ? t('pos.preparingSale') : t('pos.confirmPayment')}
                 onPress={() => void payCash()}
                 disabled={busy || preparing || !!prepareError}
                 fullWidth
@@ -204,7 +217,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
             <Card style={styles.methodCard}>
               {cardRuntime.phase === 'idle' ? (
                 <Button
-                  title={preparing ? t('pos.preparingSale', 'Preparing…') : t('pos.startCardPayment', 'Start card payment')}
+                  title={preparing ? t('pos.preparingSale') : t('pos.startCardPayment')}
                   onPress={beginCardFlow}
                   disabled={busy || preparing || !!prepareError}
                   fullWidth
@@ -221,7 +234,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
                       onPaid(saleId);
                       cardRuntime.reset();
                     } catch {
-                      setPayError(t('pos.paymentError', 'Payment failed'));
+                      setPayError(t('pos.paymentError'));
                     } finally {
                       setBusy(false);
                     }
@@ -231,11 +244,11 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
                   cardRuntime.reset();
                   resetPendingSale();
                   Alert.alert(
-                    t('pos.cardCancelledTitle', 'Card payment cancelled'),
-                    t('pos.cardCancelledMessage', 'Choose another payment method.'),
+                    t('pos.cardCancelledTitle'),
+                    t('pos.cardCancelledMessage'),
                   );
                   void prepareSale().catch(() => {
-                    setPayError(t('pos.prepareSaleError', 'Unable to prepare sale before payment.'));
+                    setPayError(t('pos.prepareSaleBeforePaymentError'));
                   });
                 }}
               />
@@ -245,7 +258,7 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
           {/* ── MIXED section ── */}
           {method === 'MIXED' && (
             <Card style={styles.methodCard}>
-              <MetaText>{t('pos.mixedCashPrompt', 'Cash portion')}</MetaText>
+              <MetaText>{t('pos.mixedCashPrompt')}</MetaText>
               <TextInput
                 style={styles.input}
                 value={cashAmountInput}
@@ -255,10 +268,10 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
                 selectTextOnFocus
               />
               <BodyText style={styles.remainderRow}>
-                {`${t('pos.cardRemainderLabel', 'Card remainder')}: ${mixedCardRemainder.toFixed(2)} EUR`}
+                {`${t('pos.cardRemainderLabel')}: ${formatAmount(mixedCardRemainder)}`}
               </BodyText>
               <Button
-                title={preparing ? t('pos.preparingSale', 'Preparing…') : t('pos.confirmPayment', 'Confirm payment')}
+                title={preparing ? t('pos.preparingSale') : t('pos.confirmPayment')}
                 onPress={() => void payMixed()}
                 disabled={busy || preparing || !!prepareError}
                 fullWidth
@@ -266,16 +279,6 @@ export function PaymentScreen({ onPaid, onBack }: Props) {
             </Card>
           )}
 
-          {/* Back button */}
-          <View style={styles.backRow}>
-            <Button
-              title={t('common.back')}
-              onPress={onBack}
-              variant="secondary"
-              disabled={busy || cardRuntime.phase === 'executing'}
-              fullWidth
-            />
-          </View>
         </ScrollView>
       </ScreenContent>
     </ScreenPage>

@@ -13,6 +13,7 @@ import { useDeviceProfile } from '@/platform/useDeviceProfile';
 import { PhoneAppShell } from '@/layouts/PhoneAppShell';
 import { TabletAppShell } from '@/layouts/TabletAppShell';
 import { KitchenDisplayShell } from '@/layouts/KitchenDisplayShell';
+import type { AuthUser } from '@/types/store';
 
 interface AppShellRouterProps {
   children: ReactNode;
@@ -20,6 +21,8 @@ interface AppShellRouterProps {
   onNavigate: (route: string) => void;
   isRouteEnabled: (route: string) => boolean;
   isKitchenMode?: boolean;
+  user: AuthUser | null;
+  onOpenUserMenu: () => void;
 }
 
 export function AppShellRouter({
@@ -28,6 +31,8 @@ export function AppShellRouter({
   onNavigate,
   isRouteEnabled,
   isKitchenMode = false,
+  user,
+  onOpenUserMenu,
 }: AppShellRouterProps) {
   const { isPhone } = useDeviceProfile();
 
@@ -37,14 +42,20 @@ export function AppShellRouter({
 
   if (isPhone) {
     return (
-      <PhoneAppShell currentRoute={currentRoute} onNavigate={onNavigate}>
+      <PhoneAppShell currentRoute={currentRoute} onNavigate={onNavigate} user={user} onOpenUserMenu={onOpenUserMenu}>
         {children}
       </PhoneAppShell>
     );
   }
 
   return (
-    <TabletAppShell currentRoute={currentRoute} onNavigate={onNavigate} isRouteEnabled={isRouteEnabled}>
+    <TabletAppShell
+      currentRoute={currentRoute}
+      onNavigate={onNavigate}
+      isRouteEnabled={isRouteEnabled}
+      user={user}
+      onOpenUserMenu={onOpenUserMenu}
+    >
       {children}
     </TabletAppShell>
   );

@@ -17,6 +17,15 @@ export interface CatalogProduct {
   sku?: string;
   extras?: Array<{ id: string; name: string; priceDelta: number }>;
   removableIngredients?: string[];
+  optionGroups?: Array<{
+    id: string;
+    name: string;
+    required?: boolean;
+    multiple?: boolean;
+    minSelections?: number;
+    maxSelections?: number;
+    choices: Array<{ id: string; label: string; priceDelta?: number }>;
+  }>;
   dietaryLabels?: string[];
   allergens?: Array<{ allergen: { code: string; name: string } }>;
 }
@@ -65,7 +74,9 @@ export function useCatalog() {
             sku: p.sku,
             extras: p.extras,
             removableIngredients: p.removableIngredients,
-            dietaryLabels: p.dietaryLabels
+            optionGroups: p.optionGroups,
+            dietaryLabels: p.dietaryLabels,
+            allergens: p.allergens
           }))
         );
 

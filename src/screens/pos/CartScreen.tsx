@@ -22,7 +22,7 @@ export function CartScreen({ onBack, onCheckout }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pos.cartTitle')} />
+      <Topbar title={t('pos.cartTitle')} onBack={onBack} />
       <ScreenContent>
         <Card>
           <TitleText>{t('pos.cartTitle')}</TitleText>
@@ -39,7 +39,6 @@ export function CartScreen({ onBack, onCheckout }: Props) {
             ListEmptyComponent={<BodyText style={styles.empty}>{t('pos.emptyCart')}</BodyText>}
           />
           <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} disabled={submitting} variant="secondary" />
             <Button title={t('pos.goPayment')} onPress={() => { setSubmitting(true); onCheckout(); }} disabled={submitting || lines.length === 0} />
           </View>
         </Card>

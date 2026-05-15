@@ -38,6 +38,13 @@ jest.mock('@react-navigation/native', () => ({
     goBack: mockGoBack,
     navigate: mockNavigate
   }),
+  useFocusEffect: (effect: () => void | (() => void)) => {
+    const React = require('react');
+    React.useEffect(() => {
+      const cleanup = effect();
+      return typeof cleanup === 'function' ? cleanup : undefined;
+    }, [effect]);
+  },
   NavigationProp: {}
 }));
 
@@ -70,8 +77,15 @@ describe('TableDetailScreen', () => {
 
     await waitFor(() => {
       expect(view.getByText(/Table 1/)).toBeTruthy();
-      expect(view.getByText('order-1')).toBeTruthy();
       expect(mockSetSelectedOrder).toHaveBeenCalledWith('order-1');
+    });
+
+    // Expand the active order section and assert item content is visible.
+    const activeOrderHeader = view.getByText(/Active order/i);
+    fireEvent.press(activeOrderHeader);
+
+    await waitFor(() => {
+      expect(view.getByText(/2x Item/i)).toBeTruthy();
     });
   });
 

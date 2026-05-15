@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next';
 
-import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { LanguageSelector } from '@/components/LanguageSelector';
 import { ScreenContent, ScreenPage } from '@/components/ScreenLayout';
@@ -33,11 +32,8 @@ export function LanguageScreen({ onBack, embedded = false }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('settings.languageTitle')} />
-      <ScreenContent>
-        {content}
-        {onBack ? <Button title={t('common.back')} onPress={onBack} variant="secondary" fullWidth /> : null}
-      </ScreenContent>
+      <Topbar title={t('settings.languageTitle')} onBack={onBack} />
+      <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );
 }

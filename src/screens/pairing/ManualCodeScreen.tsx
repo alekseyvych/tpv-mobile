@@ -35,7 +35,7 @@ export function ManualCodeScreen({ onSubmitCode, onBack }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar title={t('pairing.manualTitle')} />
+      <Topbar title={t('pairing.manualTitle')} onBack={onBack} />
       <ScreenContent>
         <Card>
           <TitleText>{t('pairing.manualTitle')}</TitleText>
@@ -48,7 +48,6 @@ export function ManualCodeScreen({ onSubmitCode, onBack }: Props) {
             editable={!submitting}
           />
           <View style={styles.row}>
-            <Button title={t('common.back')} onPress={onBack} disabled={submitting} variant="secondary" />
             <Button 
               title={t('pairing.submitManualCode')} 
               onPress={() => {

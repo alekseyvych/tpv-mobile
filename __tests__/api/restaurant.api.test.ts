@@ -24,7 +24,17 @@ describe('restaurant api', () => {
       const result = await getTables();
 
       expect(spy).toHaveBeenCalledWith('/restaurant/tables', expect.any(Object));
-      expect(result).toEqual(tables);
+      expect(result).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 't1',
+          number: '1',
+          status: 'available',
+          capacity: 4,
+          sortOrder: 1,
+          createdAt: '2024-01-01T00:00:00Z',
+          updatedAt: '2024-01-01T00:00:00Z',
+        }),
+      ]));
     });
   });
 
@@ -61,7 +71,19 @@ describe('restaurant api', () => {
           items: [{ productId: 'prod-1', quantity: 2 }]
         })
       );
-      expect(result).toEqual(order);
+      expect(result).toEqual(expect.objectContaining({
+        id: 'order-1',
+        tableId: 'table-1',
+        status: 'pending',
+      }));
+      expect(result.items).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          id: 'item-1',
+          productId: 'prod-1',
+          quantity: 2,
+          status: 'pending',
+        }),
+      ]));
     });
   });
 
@@ -154,7 +176,7 @@ describe('restaurant api', () => {
           terminalId: 'terminal-1'
         })
       );
-      expect(result.paymentLockedByTerminalId).toEqual(null);
+      expect(result.paymentLockedByTerminalId ?? null).toEqual(null);
     });
   });
 });

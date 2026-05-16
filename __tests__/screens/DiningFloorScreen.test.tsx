@@ -4,6 +4,17 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n/config';
 import { DiningFloorScreen } from '@/screens/dining/DiningFloorScreen';
 
+jest.mock('@react-navigation/native', () => {
+  const actual = jest.requireActual('@react-navigation/native');
+  const React = jest.requireActual('react');
+  return {
+    ...actual,
+    useFocusEffect: (callback: () => void | (() => void)) => {
+      React.useEffect(() => callback(), [callback]);
+    },
+  };
+});
+
 const mockLoadTables = jest.fn(async () => []);
 const mockSelectTable = jest.fn();
 

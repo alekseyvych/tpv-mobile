@@ -1,7 +1,12 @@
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { UserIcon } from '@/components/Icons';
+import { useTopbarUserMenu } from '@/components/header/TopbarUserMenuContext';
 import { theme } from '@/components/theme/theme';
+import { useAuthStore } from '@/store/auth.store';
 
 type Props = {
   title: string;
@@ -20,7 +25,12 @@ export function Topbar({
   onRightAction,
   rightActionDisabled = false,
 }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const userMenu = useTopbarUserMenu();
+  const user = useAuthStore((s) => s.user);
+  const userName = `${user?.firstName ?? ''} ${user?.lastName ?? ''}`.trim() || user?.email || '';
 
   return (
     <View
@@ -51,6 +61,48 @@ export function Topbar({
             >
               <Text style={styles.actionText}>{rightActionLabel}</Text>
             </Pressable>
+          ) : userName ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                if (!userMenu) return;
+                setMenuOpen((open) => !open);
+              }}
+              style={styles.userIdentity}
+              testID="topbar-user-trigger"
+            >
+              <View style={styles.avatarWrap}>
+                <UserIcon width={16} height={16} color={theme.colors.textInverse} />
+              </View>
+              <Text numberOfLines={1} style={styles.userName}>{userName}</Text>
+            </Pressable>
+          ) : null}
+
+          {menuOpen && userMenu ? (
+            <View style={styles.menuPopover} testID="topbar-user-menu">
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setMenuOpen(false);
+                  if (userMenu.swapBlocked) return;
+                  userMenu.onSwap();
+                }}
+                style={[styles.menuItem, userMenu.swapBlocked && styles.menuItemDisabled]}
+              >
+                <Text style={styles.menuItemText}>{t('header.userMenu.swapAccount')}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setMenuOpen(false);
+                  userMenu.onLogout();
+                }}
+                style={styles.menuItem}
+              >
+                <Text style={styles.menuItemText}>{t('header.userMenu.logout')}</Text>
+              </Pressable>
+              {userMenu.swapBlocked ? <Text style={styles.blockedText}>{userMenu.swapBlockedMessage}</Text> : null}
+            </View>
           ) : null}
         </View>
       </View>
@@ -77,6 +129,8 @@ const styles = StyleSheet.create({
   },
   sideRight: {
     alignItems: 'flex-end',
+    minWidth: 120,
+    position: 'relative',
   },
   titleWrap: {
     flex: 1,
@@ -105,5 +159,59 @@ const styles = StyleSheet.create({
     fontFamily: theme.typography.fontUi,
     fontSize: theme.typography.sizeMd,
     fontWeight: theme.typography.weightBold,
+  },
+  userIdentity: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: theme.spacing.s2,
+    maxWidth: 160,
+  },
+  avatarWrap: {
+    alignItems: 'center',
+    borderColor: theme.colors.textInverse,
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 24,
+    justifyContent: 'center',
+    width: 24,
+  },
+  userName: {
+    color: theme.colors.textInverse,
+    fontFamily: theme.typography.fontUi,
+    fontSize: theme.typography.sizeSm,
+    fontWeight: theme.typography.weightMedium,
+  },
+  menuPopover: {
+    backgroundColor: theme.colors.bgPanel,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.sm,
+    borderWidth: 1,
+    minWidth: 190,
+    padding: theme.spacing.s1,
+    position: 'absolute',
+    right: 0,
+    top: 34,
+    zIndex: 10,
+  },
+  menuItem: {
+    borderRadius: theme.radius.sm,
+    paddingHorizontal: theme.spacing.s2,
+    paddingVertical: theme.spacing.s2,
+  },
+  menuItemDisabled: {
+    opacity: 0.5,
+  },
+  menuItemText: {
+    color: theme.colors.textPrimary,
+    fontFamily: theme.typography.fontUi,
+    fontSize: theme.typography.sizeSm,
+    fontWeight: theme.typography.weightMedium,
+  },
+  blockedText: {
+    color: theme.colors.error,
+    fontFamily: theme.typography.fontUi,
+    fontSize: theme.typography.sizeXs,
+    marginTop: theme.spacing.s1,
+    paddingHorizontal: theme.spacing.s2,
   },
 });

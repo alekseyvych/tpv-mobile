@@ -19,7 +19,7 @@ export function useSync() {
   const syncNow = useCallback(async () => {
     setSyncing(true);
     try {
-      const progress = await syncService.syncQueue();
+      const progress = await syncService.syncQueue(true);
       setQueue(syncService.getQueue());
       setLastSyncAt(new Date().toISOString());
       if (progress.total > 0) {

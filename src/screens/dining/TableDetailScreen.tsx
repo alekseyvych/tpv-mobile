@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation, type NavigationProp } from '@react-navigation/native';
 
 import { Button } from '@/components/Button';
@@ -19,6 +19,7 @@ import { theme } from '@/components/theme/theme';
 import { restaurantApi } from '@/api/restaurant.api';
 import { useRestaurantStore } from '@/store/restaurant.store';
 import { useTerminalStore } from '@/store/terminal.store';
+import { useWaiterHomeStore } from '@/store/waiter-home.store';
 
 type OrderItemWithUI = {
   id: string;
@@ -44,6 +45,7 @@ export function TableDetailScreen() {
   const selectedGuestCountDraft = useRestaurantStore((s) => s.selectedGuestCountDraft);
   const setSelectedGuestCountDraft = useRestaurantStore((s) => s.setSelectedGuestCountDraft);
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
+  const setResumeContext = useWaiterHomeStore((s) => s.setResumeContext);
   const showOrderCreation = useRef(false);
 
   const [table, setTable] = useState<any>(null);
@@ -117,6 +119,11 @@ export function TableDetailScreen() {
 
         setOrder(orderData);
         setSelectedOrder(orderData.id);
+        setResumeContext({
+          tableId,
+          orderId: orderData.id,
+          terminalId: selectedTerminalId,
+        });
         if (typeof orderData.partySize === 'number' && orderData.partySize > 0) {
           setGuestCount(orderData.partySize);
           setSelectedGuestCountDraft(orderData.partySize);
@@ -142,6 +149,10 @@ export function TableDetailScreen() {
       } else {
         setOrder(null);
         setSelectedOrder(null);
+        setResumeContext({
+          tableId,
+          terminalId: selectedTerminalId,
+        });
         setItems([]);
         setPaymentLocked(false);
         setActiveOrderExpanded(false);
@@ -157,7 +168,7 @@ export function TableDetailScreen() {
     } finally {
       setLoading(false);
     }
-  }, [tableId, setSelectedOrder, selectedGuestCountDraft, setSelectedGuestCountDraft, selectedTerminalId, t]);
+  }, [tableId, setSelectedOrder, selectedGuestCountDraft, setSelectedGuestCountDraft, selectedTerminalId, setResumeContext, t]);
 
   const adjustGuestCount = useCallback((delta: number) => {
     const capacity = Math.max(1, table?.capacity ?? 99);
@@ -197,7 +208,27 @@ export function TableDetailScreen() {
         await restaurantApi.removeOrderItem(currentOrderId, itemId);
         await loadTableAndOrder();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to remove item');
+        const statusCode =
+          (err as { status?: number } | undefined)?.status ??
+          (err as { response?: { status?: number } } | undefined)?.response?.status;
+        const errorCode = (err as { code?: string } | undefined)?.code ?? '';
+        const errMessage =
+          (err as { message?: string } | undefined)?.message ??
+          (err instanceof Error ? err.message : '');
+        const isPermissionDenied =
+          statusCode === 401 ||
+          statusCode === 403 ||
+          /forbidden|permission|unauthorized|access denied/i.test(errMessage) ||
+          /forbidden|permission|unauthorized/i.test(errorCode);
+
+        if (isPermissionDenied) {
+          Alert.alert(
+            t('dining.removePermissionTitle'),
+            t('dining.removePermissionMessage'),
+          );
+        } else {
+          setError(err instanceof Error ? err.message : 'Failed to remove item');
+        }
         setItems((prev) =>
           prev.map((item) =>
             item.id === itemId ? { ...item, isRemoving: false } : item,
@@ -205,7 +236,7 @@ export function TableDetailScreen() {
         );
       }
     },
-    [currentOrderId, loadTableAndOrder, paymentLocked],
+    [currentOrderId, loadTableAndOrder, paymentLocked, t],
   );
 
   const handleUpdateItem = useCallback(
@@ -296,6 +327,12 @@ export function TableDetailScreen() {
         return;
       }
 
+      setResumeContext({
+        tableId,
+        orderId: order.id,
+        terminalId: selectedTerminalId,
+      });
+
       navigation.navigate('Checkout', {
         source: 'restaurant',
         tableId,
@@ -316,6 +353,11 @@ export function TableDetailScreen() {
 
       setPaymentLocked(true);
       setOrder(lockedOrder);
+      setResumeContext({
+        tableId,
+        orderId: order.id,
+        terminalId: selectedTerminalId,
+      });
 
       // Navigate with explicit restaurant handoff context.
       navigation.navigate('Checkout', {
@@ -328,7 +370,7 @@ export function TableDetailScreen() {
     } finally {
       setAcquiringLock(false);
     }
-  }, [order, selectedTerminalId, tableId, paymentLocked, isLockedByThisTerminal, navigation, t]);
+  }, [order, selectedTerminalId, tableId, paymentLocked, isLockedByThisTerminal, navigation, setResumeContext, t]);
 
   if (loading) {
     return (

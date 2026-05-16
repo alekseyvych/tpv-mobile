@@ -1,3 +1,5 @@
+import { useCallback, useMemo } from 'react';
+
 import {
   getCurrentUser,
   getQuickAccessProfilesWithContext,
@@ -10,98 +12,102 @@ import { analyticsService } from '@/services/AnalyticsService';
 import { useAuthStore } from '@/store/auth.store';
 
 export function useAuth() {
-  const auth = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const setTokens = useAuthStore((s) => s.setTokens);
+  const setUser = useAuthStore((s) => s.setUser);
+  const logoutLocal = useAuthStore((s) => s.logout);
 
   /**
    * Login with email + password
    */
-  async function loginWithEmailPassword(email: string, password: string) {
+  const loginWithEmailPassword = useCallback(async (email: string, password: string) => {
     try {
       const result = await login(email, password);
-      await auth.setTokens(result.accessToken, result.refreshToken);
+      await setTokens(result.accessToken, result.refreshToken);
       try {
         const user = await getCurrentUser();
-        auth.setUser(user);
+        setUser(user);
       } catch {
-        auth.setUser(null);
+        setUser(null);
       }
       await analyticsService.trackEvent('auth.login.success', { method: 'password' });
     } catch (error) {
       await analyticsService.trackEvent('auth.login.failed', { method: 'password' });
       throw error;
     }
-  }
+  }, [setTokens, setUser]);
 
   /**
    * Login with PIN (Quick Access, optional second auth)
    */
-  async function loginUsingPin(pin: string, tenantId?: string) {
+  const loginUsingPin = useCallback(async (pin: string, tenantId?: string) => {
     try {
       const result = await loginWithPin(pin, tenantId);
-      await auth.setTokens(result.accessToken, result.refreshToken);
+      await setTokens(result.accessToken, result.refreshToken);
       try {
         const user = await getCurrentUser();
-        auth.setUser(user);
+        setUser(user);
       } catch {
-        auth.setUser(null);
+        setUser(null);
       }
       await analyticsService.trackEvent('auth.login.success', { method: 'pin' });
     } catch (error) {
       await analyticsService.trackEvent('auth.login.failed', { method: 'pin' });
       throw error;
     }
-  }
+  }, [setTokens, setUser]);
 
   /**
    * Load available Quick Access staff profiles
    */
-  async function loadQuickAccessProfiles() {
+  const loadQuickAccessProfiles = useCallback(async () => {
     const result = await getQuickAccessProfilesWithContext();
     return result;
-  }
+  }, []);
 
   /**
    * Login with Quick Access: select staff user + PIN
    */
-  async function loginUsingQuickAccess(userId: string, pin: string) {
+  const loginUsingQuickAccess = useCallback(async (userId: string, pin: string) => {
     try {
       const result = await loginWithQuickAccess(userId, pin);
-      await auth.setTokens(result.accessToken, result.refreshToken);
+      await setTokens(result.accessToken, result.refreshToken);
       try {
         const user = await getCurrentUser();
-        auth.setUser(user);
+        setUser(user);
       } catch {
-        auth.setUser(null);
+        setUser(null);
       }
       await analyticsService.trackEvent('auth.login.success', { method: 'quick_access' });
     } catch (error) {
       await analyticsService.trackEvent('auth.login.failed', { method: 'quick_access' });
       throw error;
     }
-  }
+  }, [setTokens, setUser]);
 
-  async function logout() {
-    if (auth.refreshToken) {
+  const logout = useCallback(async () => {
+    if (refreshToken) {
       try {
-        await logoutRemote(auth.refreshToken);
+        await logoutRemote(refreshToken);
       } catch {
         // Always clear local session even if remote logout fails.
       }
     }
     await analyticsService.trackEvent('auth.logout');
-    await auth.logout();
-  }
+    await logoutLocal();
+  }, [logoutLocal, refreshToken]);
 
-  async function swapAccountWithQuickAccess(userId: string, pin: string) {
-    const previousRefreshToken = auth.refreshToken;
+  const swapAccountWithQuickAccess = useCallback(async (userId: string, pin: string) => {
+    const previousRefreshToken = refreshToken;
 
     // Invalid PIN or quick-access auth failures must not replace current session.
     const nextTokens = await loginWithQuickAccess(userId, pin);
     const nextUser = await getCurrentUser();
 
     // Replace active session with the new user.
-    await auth.setTokens(nextTokens.accessToken, nextTokens.refreshToken);
-    auth.setUser(nextUser);
+    await setTokens(nextTokens.accessToken, nextTokens.refreshToken);
+    setUser(nextUser);
 
     // Best-effort revoke previous refresh token, if available.
     if (previousRefreshToken && previousRefreshToken !== nextTokens.refreshToken) {
@@ -114,17 +120,27 @@ export function useAuth() {
 
     await analyticsService.trackEvent('auth.login.success', { method: 'quick_access_swap' });
     return nextUser;
-  }
+  }, [refreshToken, setTokens, setUser]);
 
-  return {
-    isAuthenticated: auth.isAuthenticated,
+  return useMemo(() => ({
+    isAuthenticated,
     logout,
     loginWithEmailPassword,
     loginUsingPin,
     loginUsingQuickAccess,
     swapAccountWithQuickAccess,
     loadQuickAccessProfiles,
-    setTokens: auth.setTokens,
-    setUser: auth.setUser
-  };
+    setTokens,
+    setUser
+  }), [
+    isAuthenticated,
+    logout,
+    loginWithEmailPassword,
+    loginUsingPin,
+    loginUsingQuickAccess,
+    swapAccountWithQuickAccess,
+    loadQuickAccessProfiles,
+    setTokens,
+    setUser,
+  ]);
 }

@@ -41,6 +41,7 @@ export function QuickAccessAuthModal({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [setupRequired, setSetupRequired] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedUserId) ?? null,
@@ -48,10 +49,17 @@ export function QuickAccessAuthModal({
   );
 
   function handleClose() {
+    setPinModalOpen(false);
     setPin('');
     setSelectedUserId(null);
     setError(null);
     onClose();
+  }
+
+  function handleClosePinModal() {
+    setPinModalOpen(false);
+    setPin('');
+    setError(null);
   }
 
   useEffect(() => {
@@ -64,9 +72,8 @@ export function QuickAccessAuthModal({
         const result = await loadQuickAccessProfiles();
         setProfiles(result.users);
         setSetupRequired(result.setupRequired);
-        if (result.users.length > 0 && !result.setupRequired) {
-          setSelectedUserId(result.users[0].id);
-        }
+        setSelectedUserId(null);
+        setPinModalOpen(false);
       } catch {
         setProfiles([]);
         setError(t('auth.quickAccessUnavailable'));
@@ -89,7 +96,8 @@ export function QuickAccessAuthModal({
     setError(null);
     try {
       await onAuthenticated(selectedUserId, pin);
-      handleClose();
+      // Don't call handleClose here - let parent component handle navigation
+      // and modal will close via the visible prop
     } catch {
       setError(t('auth.invalidPin'));
     } finally {
@@ -98,50 +106,81 @@ export function QuickAccessAuthModal({
   }
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
-      <Pressable style={styles.backdrop} onPress={handleClose}>
-        <Pressable
-          onPress={() => undefined}
+    <>
+      <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
+      <View style={styles.backdrop}>
+        <Pressable style={styles.backdropCloseLayer} onPress={handleClose} />
+        <View
           style={[
             styles.sheet,
             isPhone ? styles.phoneSheet : styles.tabletSheet,
-            isPhone ? { paddingBottom: Math.max(theme.spacing.s4, insets.bottom) } : null,
+            isPhone ? { paddingBottom: Math.max(theme.spacing.s4, insets.bottom), paddingTop: Math.max(theme.spacing.s4, insets.top) } : null,
           ]}
         >
-          <TitleText>{title}</TitleText>
-          <BodyText style={styles.description}>{description}</BodyText>
+          <View style={styles.contentWrapper}>
+            <View style={styles.headerSection}>
+              <TitleText>{title}</TitleText>
+              <BodyText style={styles.description}>{description}</BodyText>
 
-          {setupRequired ? <ErrorText>{t('auth.setupRequiredForQuickAccess')}</ErrorText> : null}
-          {loadingProfiles ? <BodyText>{t('common.loading')}</BodyText> : null}
+              {setupRequired ? <ErrorText>{t('auth.setupRequiredForQuickAccess')}</ErrorText> : null}
+              {loadingProfiles ? <BodyText>{t('common.loading')}</BodyText> : null}
+            </View>
 
-          <ScrollView contentContainerStyle={styles.profilesList} style={styles.profileScroll}>
-            {profiles.map((profile) => (
-              <Card key={profile.id} style={styles.profileCard}>
-                <View style={styles.profileHeader}>
-                  <View style={styles.profileAvatar}>
-                    <TitleText style={styles.profileInitials}>{profile.initials || 'U'}</TitleText>
+            <ScrollView contentContainerStyle={styles.profilesList} style={styles.profileScroll}>
+              {profiles.map((profile) => (
+                <Card key={profile.id} style={styles.profileCard}>
+                  <View style={styles.profileHeader}>
+                    <View style={styles.profileAvatar}>
+                      <TitleText style={styles.profileInitials}>{profile.initials || 'U'}</TitleText>
+                    </View>
+                    <View style={styles.profileMeta}>
+                      <BodyText style={styles.profileName}>{profile.displayName}</BodyText>
+                      {profile.role ? <MetaText>{profile.role}</MetaText> : null}
+                    </View>
                   </View>
-                  <View style={styles.profileMeta}>
-                    <BodyText style={styles.profileName}>{profile.displayName}</BodyText>
-                    {profile.role ? <MetaText>{profile.role}</MetaText> : null}
-                  </View>
-                </View>
-                <Button
-                  title={selectedUserId === profile.id ? t('common.done') : t('auth.selectProfile')}
-                  onPress={() => {
-                    setSelectedUserId(profile.id);
-                    setError(null);
-                  }}
-                  variant={selectedUserId === profile.id ? 'primary' : 'secondary'}
-                  fullWidth
-                />
-              </Card>
-            ))}
-          </ScrollView>
+                  <Button
+                    title={t('auth.selectProfile')}
+                    onPress={() => {
+                      setSelectedUserId(profile.id);
+                      setPin('');
+                      setError(null);
+                      setPinModalOpen(true);
+                    }}
+                    variant={selectedUserId === profile.id ? 'primary' : 'secondary'}
+                    fullWidth
+                  />
+                </Card>
+              ))}
+            </ScrollView>
 
-          {selectedProfile ? (
-            <>
-              <BodyText style={styles.pinLabel}>{selectedProfile.displayName}</BodyText>
+            {!pinModalOpen && error ? <ErrorText style={styles.errorText}>{error}</ErrorText> : null}
+
+            <View style={styles.actionsRow}>
+              <Button title={t('common.cancel')} onPress={handleClose} variant="secondary" />
+            </View>
+          </View>
+        </View>
+      </View>
+      </Modal>
+
+      <Modal
+        visible={visible && pinModalOpen && !!selectedProfile}
+        transparent
+        animationType="fade"
+        onRequestClose={handleClosePinModal}
+      >
+        <View style={styles.backdrop}>
+          <Pressable style={styles.backdropCloseLayer} onPress={handleClosePinModal} />
+          <View
+            style={[
+              styles.sheet,
+              styles.pinSheet,
+              isPhone ? { paddingBottom: Math.max(theme.spacing.s4, insets.bottom) } : null,
+            ]}
+          >
+            <View style={styles.pinContentWrapper}>
+              <TitleText>{title}</TitleText>
+              {selectedProfile ? <BodyText style={styles.pinLabel}>{selectedProfile.displayName}</BodyText> : null}
               <Input
                 value={pin}
                 onChangeText={(next) => setPin(next.replace(/[^0-9]/g, '').slice(0, 4))}
@@ -149,22 +188,22 @@ export function QuickAccessAuthModal({
                 placeholder={t('auth.pinPlaceholder')}
                 secureTextEntry
               />
-            </>
-          ) : null}
 
-          {error ? <ErrorText>{error}</ErrorText> : null}
+              {error ? <ErrorText style={styles.errorText}>{error}</ErrorText> : null}
 
-          <View style={styles.actionsRow}>
-            <Button title={t('common.cancel')} onPress={handleClose} variant="secondary" />
-            <Button
-              title={submitLabel}
-              onPress={() => void handleSubmit()}
-              disabled={submitting || loadingProfiles || setupRequired || !selectedUserId}
-            />
+              <View style={styles.actionsRow}>
+                <Button title={t('common.cancel')} onPress={handleClosePinModal} variant="secondary" />
+                <Button
+                  title={submitLabel}
+                  onPress={() => void handleSubmit()}
+                  disabled={submitting || loadingProfiles || setupRequired || !selectedUserId}
+                />
+              </View>
+            </View>
           </View>
-        </Pressable>
-      </Pressable>
-    </Modal>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -176,6 +215,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: theme.spacing.s3,
   },
+  backdropCloseLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   sheet: {
     backgroundColor: theme.colors.bgPage,
     borderColor: theme.colors.border,
@@ -186,16 +228,35 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   phoneSheet: {
-    marginTop: 'auto',
+    flex: 1,
+    maxHeight: undefined,
+    marginVertical: 0,
   },
   tabletSheet: {
     maxHeight: '88%',
+  },
+  pinSheet: {
+    maxWidth: 340,
+    flex: undefined,
+    maxHeight: 380,
+  },
+  contentWrapper: {
+    flex: 1,
+    flexDirection: 'column',
+    minHeight: 0,
+  },
+  pinContentWrapper: {
+    flexDirection: 'column',
+  },
+  headerSection: {
+    marginBottom: theme.spacing.s3,
   },
   description: {
     marginBottom: theme.spacing.s2,
   },
   profileScroll: {
-    maxHeight: 280,
+    flex: 1,
+    minHeight: 0,
   },
   profilesList: {
     gap: theme.spacing.s2,
@@ -231,6 +292,10 @@ const styles = StyleSheet.create({
   },
   pinLabel: {
     marginTop: theme.spacing.s2,
+    marginBottom: theme.spacing.s2,
+  },
+  errorText: {
+    marginBottom: theme.spacing.s2,
   },
   actionsRow: {
     flexDirection: 'row',

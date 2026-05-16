@@ -15,6 +15,7 @@ import { useDeviceProfile } from '@/platform/useDeviceProfile';
 
 type Props = {
   onBack: () => void;
+  initialStation?: KitchenPrepStation;
 };
 
 function getTimingBorderColor(elapsedMinutes: number): string {
@@ -23,7 +24,7 @@ function getTimingBorderColor(elapsedMinutes: number): string {
   return '#10b981';
 }
 
-export function KitchenDisplayScreen({ onBack }: Props) {
+export function KitchenDisplayScreen({ onBack, initialStation }: Props) {
   const { t } = useTranslation();
   const { items, station, loading, loadKitchenOrders, changeStation, advanceItemStatus } =
     useKitchenOrders();
@@ -59,6 +60,10 @@ export function KitchenDisplayScreen({ onBack }: Props) {
     async function load() {
       try {
         setError(null);
+        if (initialStation && initialStation !== station) {
+          await changeStation(initialStation);
+          return;
+        }
         await loadKitchenOrders();
       } catch (cause) {
         setError(
@@ -77,7 +82,7 @@ export function KitchenDisplayScreen({ onBack }: Props) {
     return () => {
       clearInterval(refreshTimer);
     };
-  }, [loadKitchenOrders, t]);
+  }, [changeStation, initialStation, loadKitchenOrders, station, t]);
 
   const handleAdvance = async (item: KitchenDisplayItem) => {
     if (processingId) return;

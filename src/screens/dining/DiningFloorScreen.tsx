@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Modal, Pressable, SectionList, StyleSheet, Text as RNText, View } from 'react-native';
 import { Canvas, Fill, Group, Line, Rect, RoundedRect, Text, matchFont } from '@shopify/react-native-skia';
@@ -48,7 +49,7 @@ const MIN_WORLD_H = 720;
 const ZONE_COLORS = ['#eef2ff', '#fdf2f8', '#f0fdf4', '#fff7ed', '#eff6ff', '#faf5ff'];
 
 type Props = {
-  onOpenTable: () => void;
+  onOpenTable: (tableId: string) => void;
   onGoHome: () => void;
 };
 
@@ -378,7 +379,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
 
   const handleOpenTableDirect = useCallback((tableId: string) => {
     selectTable(tableId);
-    _onOpenTable();
+    _onOpenTable(tableId);
   }, [selectTable, _onOpenTable]);
 
   const abortPendingOpenTable = useCallback(() => {
@@ -640,29 +641,36 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
     [panGesture, pinchGesture, tapGesture],
   );
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const [, layouts] = await Promise.all([
-          loadTables(),
-          restaurantApi.getZoneLayouts(),
-        ]);
-        const layoutMap: Record<string, ZoneLayoutConfig> = {};
-        for (const l of layouts) {
-          layoutMap[l.zone] = l;
-        }
-        setZoneLayouts(layoutMap);
-      } catch {
-        setError(t('dining.loadError') || 'Failed to load tables');
-      } finally {
-        setLoading(false);
+  const reloadDiningData = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [, layouts] = await Promise.all([
+        loadTables(),
+        restaurantApi.getZoneLayouts(),
+      ]);
+      const layoutMap: Record<string, ZoneLayoutConfig> = {};
+      for (const l of layouts) {
+        layoutMap[l.zone] = l;
       }
+      setZoneLayouts(layoutMap);
+    } catch {
+      setError(t('dining.loadError') || 'Failed to load tables');
+    } finally {
+      setLoading(false);
     }
-
-    void load();
   }, [loadTables, t]);
+
+  useEffect(() => {
+    void reloadDiningData();
+  }, [reloadDiningData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void reloadDiningData();
+      return undefined;
+    }, [reloadDiningData]),
+  );
 
   return (
     <ScreenPage>
@@ -680,7 +688,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
               title={t('dining.loadErrorTitle')}
               description={error}
               actionLabel={t('common.retry')}
-              onAction={() => void loadTables()}
+              onAction={() => void reloadDiningData()}
             />
           </Card>
         ) : null}

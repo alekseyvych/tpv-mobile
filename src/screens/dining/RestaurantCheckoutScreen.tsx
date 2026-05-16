@@ -24,6 +24,7 @@ import {
 import { getTerminal } from '@/api/terminals.api';
 import { restaurantApi } from '@/api/restaurant.api';
 import { useTerminalStore } from '@/store/terminal.store';
+import { useWaiterHomeStore } from '@/store/waiter-home.store';
 import {
   buildRestaurantPayments,
   computeIterationTotalFromMappedSale,
@@ -54,6 +55,8 @@ type PendingDevSimPayment = {
 export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }: Props) {
   const { t, i18n } = useTranslation();
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
+  const setResumeContext = useWaiterHomeStore((s) => s.setResumeContext);
+  const clearResumeContext = useWaiterHomeStore((s) => s.clearResumeContext);
   const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
 
   const [loading, setLoading] = useState(true);
@@ -139,7 +142,14 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
     setTable(tableData);
     setOrder(orderData);
     reconcileSelectedOrderItems(orderData);
-  }, [tableId, orderId, reconcileSelectedOrderItems]);
+    if (orderData?.id) {
+      setResumeContext({
+        tableId,
+        orderId: orderData.id,
+        terminalId: selectedTerminalId,
+      });
+    }
+  }, [tableId, orderId, reconcileSelectedOrderItems, selectedTerminalId, setResumeContext]);
 
   useEffect(() => {
     let mounted = true;
@@ -259,6 +269,11 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       const created = await restaurantApi.createUmbrellaSale(orderId, umbrellaBody);
 
       setOrder(created.order);
+      setResumeContext({
+        tableId,
+        orderId: created.order.id,
+        terminalId,
+      });
       resume = await restaurantApi.getOpenPosSaleResume(orderId);
     }
 
@@ -271,7 +286,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       selectedRows,
       orderItemToSaleLineId: resume?.orderItemIdToSaleLineId ?? {}
     };
-  }, [ensureShift, order, orderId, t]);
+  }, [ensureShift, order, orderId, setResumeContext, t, tableId]);
 
   const ensureCardTerminalProfileConfigured = useCallback(async (): Promise<string | null> => {
     if (!selectedTerminalId) {
@@ -423,6 +438,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
               // Best effort lock release on checkout completion.
             }
           }
+          clearResumeContext();
           setCompletedSaleId(saleId);
           await loadReceipt(saleId);
           await loadContext(false);
@@ -466,7 +482,8 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       ensureCardTerminalProfileConfigured,
       t,
       loadReceipt,
-      loadContext
+      loadContext,
+      clearResumeContext
     ]
   );
 
@@ -537,6 +554,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
             // Best effort
           }
         }
+        clearResumeContext();
         setCompletedSaleId(pending.saleId);
         await loadReceipt(pending.saleId);
         await loadContext(false);
@@ -564,7 +582,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       setDevSimProcessing(false);
       setProcessing(false);
     }
-  }, [devSimPending, devSimOutcome, devSimDelayMs, orderId, onSuccess, selectedTerminalId, t, loadReceipt, loadContext]);
+  }, [devSimPending, devSimOutcome, devSimDelayMs, orderId, onSuccess, selectedTerminalId, t, loadReceipt, loadContext, clearResumeContext]);
 
   const handleDevSimCancel = useCallback(() => {
     setDevSimPending(null);

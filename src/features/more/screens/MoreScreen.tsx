@@ -8,6 +8,7 @@
 
 import React from 'react';
 import {
+  Alert,
   View,
   StyleSheet,
   TouchableOpacity,
@@ -74,8 +75,16 @@ export function MoreScreen({ onNavigate, isRouteEnabled }: MoreScreenProps) {
           return (
             <TouchableOpacity
               style={[styles.moduleItem, disabled ? styles.moduleItemDisabled : null]}
-              onPress={() => onNavigate(module.route)}
-              disabled={disabled}
+              onPress={() => {
+                if (disabled) {
+                  Alert.alert(
+                    t('layout.sidebar.noAccessTitle'),
+                    t('layout.sidebar.noAccessMessage', { module: t(module.label) }),
+                  );
+                  return;
+                }
+                onNavigate(module.route);
+              }}
             >
               <module.icon
                 width={24}

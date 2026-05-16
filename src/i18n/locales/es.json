@@ -116,6 +116,8 @@
     "tableDetailTitle": "Detalle de mesa",
     "selectedTable": "Mesa seleccionada",
     "createOrder": "Crear orden",
+    "createOrderTitle": "Agregar productos a la orden",
+    "backToTableDetails": "Volver al detalle de mesa",
     "orderStatus": "Estado de orden",
     "emptyOrdersTitle": "No hay órdenes activas",
     "noOrders": "Aún no hay órdenes",
@@ -139,6 +141,8 @@
     "checkoutRecoverAction": "Recuperar estado de pago desconocido",
     "resumeCheckout": "Reanudar cobro",
     "paymentLockedByOtherTerminal": "Esta orden está bloqueada para cobro por otro terminal.",
+    "removePermissionTitle": "Permiso requerido",
+    "removePermissionMessage": "No tienes permiso para esta acción. Cambia a una cuenta admin para hacerlo.",
     "item": "Producto",
     "items": "productos",
     "viewList": "Lista",
@@ -497,10 +501,24 @@
     "errorLongMustExceedShort": "La inactividad larga debe superar a la corta"
   },
   "home": {
+    "session": {
+      "title": "Sesión actual",
+      "description": "Estos valores vienen del estado real de sincronización en este dispositivo.",
+      "terminal": "Terminal",
+      "terminalNotSelected": "Sin seleccionar",
+      "mode": "Modo",
+      "modeUnknown": "Desconocido",
+      "queued": "En cola",
+      "failed": "Fallidos"
+    },
     "greeting": {
       "morning": "Buenos días",
       "afternoon": "Buenas tardes",
       "evening": "Buenas noches"
+    },
+    "sync": {
+      "connectedDescription": "Los datos se sincronizan en segundo plano.",
+      "offlineDescription": "Estás sin conexión. Las nuevas acciones se sincronizarán cuando vuelva la red."
     },
     "status": {
       "device": "Dispositivo",
@@ -509,6 +527,9 @@
     },
     "actions": {
       "newSale": "Nueva venta",
+      "diningOps": "Gestionar mesas activas",
+      "kitchenOps": "Cola de cocina",
+      "barOps": "Cola de barra",
       "newProduct": "Nuevo producto",
       "newCustomer": "Nuevo cliente",
       "retry": "Reintentar"
@@ -535,6 +556,50 @@
       "loading": "Cargando actividad...",
       "permissionDenied": "Actividad no disponible para tu rol",
       "loadError": "Actividad no disponible"
+    },
+    "readiness": {
+      "title": "Preparación",
+      "shiftOpen": "Turno abierto",
+      "shiftClosed": "Turno cerrado",
+      "roleUnknown": "Rol desconocido",
+      "terminal": "Terminal",
+      "noTerminal": "Sin terminal seleccionada",
+      "selectTerminal": "Seleccionar terminal",
+      "openShift": "Abrir turno"
+    },
+    "primary": {
+      "title": "Acción principal",
+      "openDiningFloor": "Abrir salón",
+      "openDiningFloorDescription": "Inicia servicio de mesa, toma pedidos y continúa sesiones activas."
+    },
+    "resume": {
+      "title": "Reanudar",
+      "loadingTitle": "Comprobando última mesa...",
+      "tableLabel": "Mesa {{table}}",
+      "orderLabel": "Pedido {{orderId}}",
+      "noOrder": "Sin pedido activo",
+      "emptyTitle": "Sin mesa reciente",
+      "emptyDescription": "Abre una mesa desde el salón para reanudarla rápido aquí."
+    },
+    "readyToServe": {
+      "title": "Listo para servir",
+      "loadingTitle": "Cargando preparados...",
+      "tableAndOrder": "Mesa {{table}} · Pedido {{orderId}}",
+      "emptyTitle": "Nada listo por ahora",
+      "emptyDescription": "Los preparados de cocina y barra aparecerán aquí.",
+      "unavailableTitle": "Lista no disponible",
+      "permissionDenied": "No tienes acceso al estado de cocina.",
+      "loadError": "No se pudieron cargar los preparados."
+    },
+    "search": {
+      "title": "Búsqueda rápida de mesa",
+      "placeholder": "Buscar número de mesa",
+      "tableLabel": "Mesa {{table}}",
+      "openOrder": "Tiene pedido abierto",
+      "noOpenOrder": "Sin pedido abierto"
+    },
+    "shortcuts": {
+      "title": "Accesos directos"
     }
   },
   "layout": {
@@ -547,6 +612,8 @@
       "expand": "Expandir",
       "requiresLicense": "Requiere licencia",
       "noPermission": "Sin permiso",
+      "noAccessTitle": "Acceso denegado",
+      "noAccessMessage": "No tienes acceso a {{module}}. Pide ayuda a un admin.",
       "locked": "Bloqueado"
     },
     "groupLabels": {

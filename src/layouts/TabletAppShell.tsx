@@ -25,19 +25,15 @@
 import { type ReactNode, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ShellUserIdentityBar } from '@/components/header/ShellUserIdentityBar';
 import { theme } from '@/components/theme/theme';
 import { LAYOUT } from '@/platform/breakpoints';
 import { TabletNavigator } from '@/navigation/TabletNavigator';
-import type { AuthUser } from '@/types/store';
 
 interface TabletAppShellProps {
   children: ReactNode;
   currentRoute: string;
   onNavigate: (route: string) => void;
   isRouteEnabled: (route: string) => boolean;
-  user: AuthUser | null;
-  onOpenUserMenu: () => void;
 }
 
 export function TabletAppShell({
@@ -45,8 +41,6 @@ export function TabletAppShell({
   currentRoute,
   onNavigate,
   isRouteEnabled,
-  user,
-  onOpenUserMenu,
 }: TabletAppShellProps) {
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
@@ -56,7 +50,6 @@ export function TabletAppShell({
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={styles.container}>
-      <ShellUserIdentityBar user={user} onPress={onOpenUserMenu} />
       <View testID="tablet-shell-main" style={styles.mainContainer}>
         <View
           testID="tablet-shell-sidebar"

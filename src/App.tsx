@@ -11,7 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ContextGuard } from '@/components/guards/ContextGuard';
 import { QuickAccessAuthModal } from '@/components/auth/QuickAccessAuthModal';
 import { Spinner } from '@/components/Spinner';
-import { UserMenuModal } from '@/components/header/UserMenuModal';
+import { TopbarUserMenuProvider } from '@/components/header/TopbarUserMenuContext';
 import { useAppInitialization } from '@/hooks/useAppInitialization';
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,6 +22,7 @@ import { markActivity } from '@/hooks/auto-lock.activity';
 import { useAuthStore } from '@/store/auth.store';
 import { useContextStore } from '@/store/context.store';
 import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
+import { useRestaurantStore } from '@/store/restaurant.store';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { PINLoginScreen } from '@/screens/auth/PINLoginScreen';
 import { SetupScreen } from '@/screens/auth/SetupScreen';
@@ -68,6 +69,7 @@ import {
 } from '@/navigation/shellRouteGuards';
 import { MoreScreen } from '@/features/more/screens/MoreScreen';
 import { useTerminalStore } from '@/store/terminal.store';
+import { useWaiterHomeStore } from '@/store/waiter-home.store';
 
 type RootStackParamList = {
   FirstInit: undefined;
@@ -86,7 +88,7 @@ type RootStackParamList = {
   DiningFloor: undefined;
   TableDetail: undefined;
   OrderCreation: undefined;
-  KitchenDisplay: undefined;
+  KitchenDisplay: { station?: 'kitchen' | 'bar' | 'all' } | undefined;
   Checkout: { source: 'restaurant'; tableId: string; orderId: string } | undefined;
   Cart: undefined;
   Payment: undefined;
@@ -131,22 +133,12 @@ function AuthenticatedShellScreen({
 }) {
   const { t } = useTranslation();
   const { logout, swapAccountWithQuickAccess } = useAuth();
-  const user = useAuthStore((s) => s.user);
   const authSessionVersion = useAuthStore((s) => s.authSessionVersion);
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const operatingMode = useTerminalStore((s) => s.operatingMode);
   const capabilities = useTerminalStore((s) => s.capabilities);
   const cardRuntimePhase = usePaymentRuntimeStore((s) => s.cardRuntimePhase);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [swapModalOpen, setSwapModalOpen] = useState(false);
-
-  const userName = useMemo(() => {
-    if (!user) return '';
-    const fullName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
-    if (fullName.length > 0) return fullName;
-    if (user.email?.length) return user.email;
-    return user.id;
-  }, [user]);
 
   const isSwapBlocked = cardRuntimePhase !== 'idle';
 
@@ -164,7 +156,6 @@ function AuthenticatedShellScreen({
 
   async function handleLogout() {
     await logout();
-    setUserMenuOpen(false);
     navigation.replace('Login');
   }
 
@@ -203,52 +194,44 @@ function AuthenticatedShellScreen({
     }
 
     setSwapModalOpen(false);
-    setUserMenuOpen(false);
   }
 
   return (
     <ContextGuard fallback={<SetupFallback navigation={navigation} />}>
-      <AppShellRouter
-        key={authSessionVersion}
-        currentRoute={currentRoute}
-        isKitchenMode={isKitchenMode}
-        user={user}
-        onOpenUserMenu={() => setUserMenuOpen(true)}
-        isRouteEnabled={(route) =>
-          isShellRouteEnabled(route)
-        }
-        onNavigate={(route) => {
-          const destination = resolveShellRoute(route);
-          if (destination !== currentRoute) {
-            if (destination === 'Checkout') {
-              navigation.navigate('TerminalSelection', { target: 'Checkout' });
-              return;
-            }
-            navigation.navigate(destination);
-          }
+      <TopbarUserMenuProvider
+        value={{
+          onLogout: () => {
+            void handleLogout();
+          },
+          onSwap: () => {
+            if (isSwapBlocked) return;
+            setSwapModalOpen(true);
+          },
+          swapBlocked: isSwapBlocked,
+          swapBlockedMessage: t('header.userMenu.swapBlockedUnsafeCardRuntime'),
         }}
       >
-        {children}
-      </AppShellRouter>
-
-      <UserMenuModal
-        visible={userMenuOpen}
-        userName={userName}
-        swapBlocked={isSwapBlocked}
-        swapBlockedMessage={t('header.userMenu.swapBlockedUnsafeCardRuntime')}
-        onClose={() => setUserMenuOpen(false)}
-        onOpenOptions={() => {
-          setUserMenuOpen(false);
-          navigation.navigate('Settings');
-        }}
-        onLogout={() => {
-          void handleLogout();
-        }}
-        onSwap={() => {
-          if (isSwapBlocked) return;
-          setSwapModalOpen(true);
-        }}
-      />
+        <AppShellRouter
+          key={authSessionVersion}
+          currentRoute={currentRoute}
+          isKitchenMode={isKitchenMode}
+          isRouteEnabled={(route) =>
+            isShellRouteEnabled(route)
+          }
+          onNavigate={(route) => {
+            const destination = resolveShellRoute(route);
+            if (destination !== currentRoute) {
+              if (destination === 'Checkout') {
+                navigation.navigate('TerminalSelection', { target: 'Checkout' });
+                return;
+              }
+              navigation.navigate(destination);
+            }
+          }}
+        >
+          {children}
+        </AppShellRouter>
+      </TopbarUserMenuProvider>
 
       <QuickAccessAuthModal
         visible={swapModalOpen}
@@ -303,11 +286,14 @@ function RedirectOnMount({
 
 export default function App() {
   const { ready, deviceInitialized } = useAppInitialization();
-  const { queuedCount, isOnline, isSyncing, failedCount, syncNow } = useSync();
+  const { isOnline, isSyncing, syncNow } = useSync();
   const { trackEvent, setContext } = useAnalytics();
   const { pairWithManualCode, pairWithToken, lastResult, reset } = useDevicePairing();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const setSelectedTable = useRestaurantStore((s) => s.setSelectedTable);
+  const setSelectedOrder = useRestaurantStore((s) => s.setSelectedOrder);
+  const setResumeContext = useWaiterHomeStore((s) => s.setResumeContext);
   const localContext = useContextStore((s) => s.localContext);
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const operatingMode = useTerminalStore((s) => s.operatingMode);
@@ -524,18 +510,39 @@ export default function App() {
           children={({ navigation }) => (
             <AuthenticatedShellScreen navigation={navigation} currentRoute="Home">
               <HomeScreen
-                onGoQuickAccess={() => navigation.navigate('PinLogin')}
                 onGoDining={() =>
                   navigation.navigate(
                     usesDiningFloorNavigation(operatingMode, capabilities) ? 'DiningFloor' : 'Checkout',
                   )
                 }
+                onGoDiningFloor={() => {
+                  if (!selectedTerminalId) {
+                    navigation.navigate('TerminalSelection', { target: 'DiningFloor' });
+                    return;
+                  }
+                  navigation.navigate('DiningFloor');
+                }}
                 onGoKitchen={() => navigation.navigate('KitchenDisplay')}
+                onGoBar={() => navigation.navigate('KitchenDisplay', { station: 'bar' })}
                 onGoPos={() => navigation.navigate('TerminalSelection', { target: 'Checkout' })}
                 onGoAppointments={() => navigation.navigate('AppointmentsList')}
                 onGoSettings={() => navigation.navigate('Settings')}
-                queuedSyncCount={queuedCount}
-                syncFailedCount={failedCount}
+                onSelectTerminal={() => navigation.navigate('TerminalSelection', { target: 'DiningFloor' })}
+                onOpenShift={() => navigation.navigate('DiningFloor')}
+                onOpenTableContext={(tableId, orderId) => {
+                  setSelectedTable(tableId);
+                  setSelectedOrder(orderId ?? null);
+                  setResumeContext({
+                    tableId,
+                    orderId,
+                    terminalId: selectedTerminalId,
+                  });
+                  if (!selectedTerminalId) {
+                    navigation.navigate('TerminalSelection', { target: 'DiningFloor' });
+                    return;
+                  }
+                  navigation.navigate('TableDetail');
+                }}
                 isOnline={isOnline}
                 isSyncing={isSyncing}
                 onSyncNow={() => void syncNow()}
@@ -690,7 +697,14 @@ export default function App() {
               <AuthenticatedShellScreen navigation={navigation} currentRoute="DiningFloor">
                 <DiningFloorScreen
                   onGoHome={() => navigation.navigate('Home')}
-                  onOpenTable={() => navigation.navigate('TableDetail')}
+                  onOpenTable={(tableId) => {
+                    setSelectedTable(tableId);
+                    setResumeContext({
+                      tableId,
+                      terminalId: selectedTerminalId,
+                    });
+                    navigation.navigate('TableDetail');
+                  }}
                 />
               </AuthenticatedShellScreen>
             );
@@ -738,9 +752,12 @@ export default function App() {
         />
         <Stack.Screen
           name="KitchenDisplay"
-          children={({ navigation }) => (
+          children={({ navigation, route }) => (
             <AuthenticatedShellScreen navigation={navigation} currentRoute="KitchenDisplay">
-              <KitchenDisplayScreen onBack={() => navigation.goBack()} />
+              <KitchenDisplayScreen
+                onBack={() => navigation.goBack()}
+                initialStation={route.params?.station}
+              />
             </AuthenticatedShellScreen>
           )}
         />

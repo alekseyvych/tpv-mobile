@@ -18,6 +18,8 @@ jest.mock('axios', () => ({
   __esModule: true,
   default: {
     request: (...args: unknown[]) => mockAxiosRequest(...args),
+    isAxiosError: (value: unknown) =>
+      Boolean(value && typeof value === 'object' && 'response' in (value as Record<string, unknown>)),
   },
 }));
 

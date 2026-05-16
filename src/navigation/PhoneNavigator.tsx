@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -14,6 +14,7 @@ import { theme } from '@/components/theme/theme';
 type Props = {
   currentRoute: string;
   onNavigate: (route: string) => void;
+  isRouteEnabled: (route: string) => boolean;
 };
 
 function resolveActiveTab(currentRoute: string): 'home' | 'pos' | 'dining' | 'kitchen' | 'more' {
@@ -24,7 +25,7 @@ function resolveActiveTab(currentRoute: string): 'home' | 'pos' | 'dining' | 'ki
   return 'more';
 }
 
-export function PhoneNavigator({ currentRoute, onNavigate }: Props) {
+export function PhoneNavigator({ currentRoute, onNavigate, isRouteEnabled }: Props) {
   const { t } = useTranslation();
   const activeTab = resolveActiveTab(currentRoute);
 
@@ -41,11 +42,31 @@ export function PhoneNavigator({ currentRoute, onNavigate }: Props) {
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = tab.key === activeTab;
+        const disabled = !isRouteEnabled(tab.route);
 
         return (
-          <Pressable key={tab.key} onPress={() => onNavigate(tab.route)} style={styles.tabItem}>
-            <Icon width={20} height={20} color={isActive ? theme.colors.accentAction : theme.colors.textSecondary} />
-            <BodyText style={[styles.tabLabel, isActive ? styles.tabLabelActive : null]}>{tab.label}</BodyText>
+          <Pressable
+            key={tab.key}
+            onPress={() => {
+              if (disabled) {
+                Alert.alert(
+                  t('layout.sidebar.noAccessTitle'),
+                  t('layout.sidebar.noAccessMessage', { module: tab.label }),
+                );
+                return;
+              }
+              onNavigate(tab.route);
+            }}
+            style={[styles.tabItem, disabled ? styles.tabItemDisabled : null]}
+          >
+            <Icon
+              width={20}
+              height={20}
+              color={disabled ? theme.colors.textMuted : isActive ? theme.colors.accentAction : theme.colors.textSecondary}
+            />
+            <BodyText style={[styles.tabLabel, isActive ? styles.tabLabelActive : null, disabled ? styles.tabLabelDisabled : null]}>
+              {tab.label}
+            </BodyText>
           </Pressable>
         );
       })}
@@ -71,6 +92,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
   },
+  tabItemDisabled: {
+    opacity: 0.55,
+  },
   tabLabel: {
     color: theme.colors.textSecondary,
     fontSize: theme.typography.sizeXs,
@@ -78,5 +102,8 @@ const styles = StyleSheet.create({
   },
   tabLabelActive: {
     color: theme.colors.accentAction,
+  },
+  tabLabelDisabled: {
+    color: theme.colors.textMuted,
   },
 });

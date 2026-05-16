@@ -48,14 +48,16 @@ describe('QuickAccessAuthModal', () => {
       expect(mockLoadQuickAccessProfiles).toHaveBeenCalledTimes(1);
     });
 
-    fireEvent.press(view.getByText(/Select profile|Seleccionar perfil/));
+    fireEvent.press(view.getAllByText(/Select profile|Seleccionar perfil/)[1]);
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '1234');
     fireEvent.press(view.getByText(/Swap account|Cambiar cuenta/));
 
     await waitFor(() => {
       expect(onAuthenticated).toHaveBeenCalledWith('u-2', '1234');
-      expect(onClose).toHaveBeenCalledTimes(1);
+      // Modal doesn't close after successful auth - parent component handles that
     });
+    // onClose should NOT be called after successful auth
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('keeps modal active and shows validation error on invalid PIN length', async () => {
@@ -79,6 +81,7 @@ describe('QuickAccessAuthModal', () => {
       expect(view.getAllByText('Ana Lopez').length).toBeGreaterThan(0);
     });
 
+    fireEvent.press(view.getAllByText(/Select profile|Seleccionar perfil/)[0]);
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '12');
     fireEvent.press(view.getByText(/Swap account|Cambiar cuenta/));
 

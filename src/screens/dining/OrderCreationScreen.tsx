@@ -373,6 +373,9 @@ export function OrderCreationScreen() {
         await restaurantApi.addOrderItem(activeOrderId, itemPayload);
         setSelectedOrder(activeOrderId);
         activeOrderIdRef.current = activeOrderId;
+        if (selectedTableId) {
+          updateTable(selectedTableId, { status: 'occupied' });
+        }
       } else {
         if (!selectedTableId) {
           throw new Error(t('dining.selectTableRequired', 'Table selection is required'));
@@ -385,7 +388,7 @@ export function OrderCreationScreen() {
         });
         setSelectedOrder(createdOrder.id);
         activeOrderIdRef.current = createdOrder.id;
-        updateTable(selectedTableId, { currentOrderId: createdOrder.id });
+        updateTable(selectedTableId, { currentOrderId: createdOrder.id, status: 'occupied' });
         if (createdOrder.partySize) {
           setSelectedGuestCountDraft(createdOrder.partySize);
         }
@@ -522,7 +525,7 @@ export function OrderCreationScreen() {
                   .then((createdOrder) => {
                     setSelectedOrder(createdOrder.id);
                     activeOrderIdRef.current = createdOrder.id;
-                    updateTable(selectedTableId, { currentOrderId: createdOrder.id });
+                    updateTable(selectedTableId, { currentOrderId: createdOrder.id, status: 'occupied' });
                     if (createdOrder.partySize) {
                       setSelectedGuestCountDraft(createdOrder.partySize);
                     }
@@ -556,7 +559,10 @@ export function OrderCreationScreen() {
         if (selectedTableId && activeOrderIdRef.current) {
           try {
             const latestTable = await restaurantApi.getTableById(selectedTableId);
-            updateTable(selectedTableId, { currentOrderId: latestTable.currentOrderId ?? null });
+            updateTable(selectedTableId, {
+              currentOrderId: latestTable.currentOrderId ?? null,
+              status: latestTable.status,
+            });
             setSelectedOrder(latestTable.currentOrderId ?? activeOrderIdRef.current);
           } catch {
             // Keep optimistic local badge; table/order sync will be refreshed on next data load.
@@ -588,6 +594,10 @@ export function OrderCreationScreen() {
     },
     [selectedTableId, processQuickAddQueue],
   );
+
+  const handleBackToTableDetails = useCallback(() => {
+    navigation.goBack();
+  }, [navigation]);
 
   return (
     <ScreenPage>
@@ -1080,6 +1090,15 @@ export function OrderCreationScreen() {
         )}
 
       </ScreenContent>
+
+      <Card style={styles.backCard}>
+        <Button
+          title={t('dining.backToTableDetails')}
+          onPress={handleBackToTableDetails}
+          variant="secondary"
+          fullWidth
+        />
+      </Card>
     </ScreenPage>
   );
 }
@@ -1230,7 +1249,11 @@ const styles = StyleSheet.create({
   checkboxItem: { flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing.s2 },
   checkboxLabel: { marginLeft: theme.spacing.s2 },
   buttonRow: { flexDirection: 'row', gap: theme.spacing.s2, marginTop: theme.spacing.s3 },
-  backCard: { marginTop: theme.spacing.s3 },
+  backCard: {
+    marginHorizontal: theme.spacing.s4,
+    marginBottom: theme.spacing.s2,
+    marginTop: theme.spacing.s1,
+  },
   gridRow: { gap: theme.spacing.s2, flex: 1 },
   gridItem: { flex: 0.5, minWidth: 0 }
 });

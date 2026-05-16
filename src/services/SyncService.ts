@@ -31,6 +31,25 @@ function safeHeaders(headers?: Record<string, string>): Record<string, string> {
   return normalized;
 }
 
+function getStatusCode(error: unknown): number | undefined {
+  if (!axios.isAxiosError(error)) return undefined;
+  return error.response?.status;
+}
+
+function isRetriableError(error: unknown): boolean {
+  const status = getStatusCode(error);
+
+  // Network/timeout/no-response errors are retriable.
+  if (typeof status !== 'number') return true;
+
+  // Retry on request timeout/rate limit and server-side faults.
+  if (status === 408 || status === 425 || status === 429) return true;
+  if (status >= 500) return true;
+
+  // 4xx authorization/validation/conflict errors are permanent for the queued payload.
+  return false;
+}
+
 class SyncService {
   private queue: QueuedSyncOperation[] = [];
 
@@ -87,11 +106,13 @@ class SyncService {
     this.progressListeners.forEach((listener) => listener(progress));
   }
 
-  async syncQueue(): Promise<SyncProgress> {
+  async syncQueue(force = false): Promise<SyncProgress> {
     await this.loadQueue();
 
     const now = Date.now();
-    const candidates = this.queue.filter((item) => item.nextRetryAt <= now);
+    const candidates = force
+      ? [...this.queue]
+      : this.queue.filter((item) => item.nextRetryAt <= now);
 
     const progress: SyncProgress = {
       total: candidates.length,
@@ -131,11 +152,16 @@ class SyncService {
         byId.delete(current.id);
         progress.success += 1;
       } catch (error) {
-        current.retryCount += 1;
-        current.status = 'failed';
-        current.lastError = error instanceof Error ? error.message : 'Unknown sync failure';
-        current.nextRetryAt = Date.now() + toRetryDelayMs(current.retryCount);
-        current.updatedAt = Date.now();
+        if (isRetriableError(error)) {
+          current.retryCount += 1;
+          current.status = 'failed';
+          current.lastError = error instanceof Error ? error.message : 'Unknown sync failure';
+          current.nextRetryAt = Date.now() + toRetryDelayMs(current.retryCount);
+          current.updatedAt = Date.now();
+        } else {
+          // Drop permanently invalid queued operations (e.g. 403/404/422) so stale failures do not linger.
+          byId.delete(current.id);
+        }
         progress.failed += 1;
       } finally {
         progress.processed += 1;

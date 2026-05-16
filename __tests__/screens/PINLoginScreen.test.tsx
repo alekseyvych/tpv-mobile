@@ -34,7 +34,15 @@ describe('PINLoginScreen', () => {
       expect(mockLoadQuickAccessProfiles).toHaveBeenCalled();
     });
 
-    fireEvent.press(view.getByText(/Done|Listo/));
+    // Profile card with Select button should be visible
+    await waitFor(() => {
+      expect(view.getByText(/Ana Lopez/)).toBeTruthy();
+    });
+
+    // Open PIN modal
+    fireEvent.press(view.getByText(/Select profile|Seleccionar perfil/));
+    
+    // Enter invalid PIN
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '123');
     fireEvent.press(view.getAllByText(/Login with quick access|Entrar con acceso rápido/)[0]);
 
@@ -54,12 +62,18 @@ describe('PINLoginScreen', () => {
       </I18nextProvider>
     );
 
+    // Wait for profiles to load
     await waitFor(() => {
       expect(view.getAllByText(/Ana Lopez/).length).toBeGreaterThan(0);
     });
 
-    fireEvent.press(view.getByText(/Done|Listo/));
+    // Open PIN modal by selecting profile
+    fireEvent.press(view.getByText(/Select profile|Seleccionar perfil/));
+    
+    // Enter valid PIN
     fireEvent.changeText(view.getByPlaceholderText(/4-digit PIN|PIN de 4 dígitos/), '1234');
+    
+    // Submit quick access login
     fireEvent.press(view.getAllByText(/Login with quick access|Entrar con acceso rápido/)[0]);
 
     await waitFor(() => {

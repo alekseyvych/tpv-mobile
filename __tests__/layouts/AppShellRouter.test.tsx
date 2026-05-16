@@ -45,8 +45,6 @@ describe('AppShellRouter', () => {
         currentRoute="KitchenDisplay"
         onNavigate={jest.fn()}
         isRouteEnabled={() => true}
-        user={null}
-        onOpenUserMenu={jest.fn()}
         isKitchenMode
       >
         <Text testID="router-child">content</Text>
@@ -64,8 +62,6 @@ describe('AppShellRouter', () => {
         currentRoute="Home"
         onNavigate={jest.fn()}
         isRouteEnabled={() => true}
-        user={null}
-        onOpenUserMenu={jest.fn()}
       >
         <Text testID="router-child">content</Text>
       </AppShellRouter>,
@@ -83,8 +79,6 @@ describe('AppShellRouter', () => {
         currentRoute="Home"
         onNavigate={jest.fn()}
         isRouteEnabled={() => true}
-        user={null}
-        onOpenUserMenu={jest.fn()}
       >
         <Text testID="router-child">content</Text>
       </AppShellRouter>,

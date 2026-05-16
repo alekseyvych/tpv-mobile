@@ -119,6 +119,7 @@
     "selectedTable": "Selected table",
     "createOrder": "Create order",
     "createOrderTitle": "Add items to order",
+    "backToTableDetails": "Back to table details",
     "orderStatus": "Order status",
     "emptyOrdersTitle": "No active orders",
     "noOrders": "No orders yet",
@@ -162,6 +163,8 @@
     "ready": "Mark as ready",
     "served": "Mark as served",
     "addItemError": "Failed to add item",
+    "removePermissionTitle": "Permission required",
+    "removePermissionMessage": "You don't have permission for this action. Swap to admin account to do it.",
     "dismiss": "Dismiss"
   },
   "kitchen": {
@@ -516,10 +519,24 @@
     "errorLongMustExceedShort": "Long inactivity must be greater than short inactivity"
   },
   "home": {
+    "session": {
+      "title": "Current session",
+      "description": "These values come from live sync state on this device.",
+      "terminal": "Terminal",
+      "terminalNotSelected": "Not selected",
+      "mode": "Mode",
+      "modeUnknown": "Unknown",
+      "queued": "Queued",
+      "failed": "Failed"
+    },
     "greeting": {
       "morning": "Good morning",
       "afternoon": "Good afternoon",
       "evening": "Good evening"
+      },
+      "sync": {
+        "connectedDescription": "Data is syncing in the background.",
+        "offlineDescription": "You are offline. New actions will sync when connection returns."
     },
     "status": {
       "device": "Device",
@@ -528,6 +545,9 @@
     },
     "actions": {
       "newSale": "New Sale",
+      "diningOps": "Manage active tables",
+      "kitchenOps": "Kitchen queue",
+      "barOps": "Bar queue",
       "newProduct": "New Product",
       "newCustomer": "New Customer",
       "retry": "Retry"
@@ -554,6 +574,50 @@
       "loading": "Loading activity...",
       "permissionDenied": "Activity unavailable for your role",
       "loadError": "Activity unavailable"
+    },
+    "readiness": {
+      "title": "Readiness",
+      "shiftOpen": "Shift open",
+      "shiftClosed": "Shift closed",
+      "roleUnknown": "Unknown role",
+      "terminal": "Terminal",
+      "noTerminal": "No terminal selected",
+      "selectTerminal": "Select terminal",
+      "openShift": "Open shift"
+    },
+    "primary": {
+      "title": "Primary action",
+      "openDiningFloor": "Open dining floor",
+      "openDiningFloorDescription": "Start table service, take orders, and continue active sessions."
+    },
+    "resume": {
+      "title": "Resume",
+      "loadingTitle": "Checking last table...",
+      "tableLabel": "Table {{table}}",
+      "orderLabel": "Order {{orderId}}",
+      "noOrder": "No active order",
+      "emptyTitle": "No recent table",
+      "emptyDescription": "Open a table from the dining floor to resume it quickly here."
+    },
+    "readyToServe": {
+      "title": "Ready to serve",
+      "loadingTitle": "Loading ready items...",
+      "tableAndOrder": "Table {{table}} · Order {{orderId}}",
+      "emptyTitle": "Nothing ready now",
+      "emptyDescription": "Kitchen and bar ready items will appear here.",
+      "unavailableTitle": "Ready list unavailable",
+      "permissionDenied": "You do not have access to kitchen readiness.",
+      "loadError": "Could not load ready items."
+    },
+    "search": {
+      "title": "Table quick search",
+      "placeholder": "Search table number",
+      "tableLabel": "Table {{table}}",
+      "openOrder": "Has open order",
+      "noOpenOrder": "No open order"
+    },
+    "shortcuts": {
+      "title": "Shortcuts"
     }
   },
   "layout": {
@@ -566,6 +630,8 @@
       "expand": "Expand",
       "requiresLicense": "Requires license",
       "noPermission": "No permission",
+      "noAccessTitle": "Access denied",
+      "noAccessMessage": "You don't have access to {{module}}. Ask an admin.",
       "locked": "Locked"
     },
     "groupLabels": {

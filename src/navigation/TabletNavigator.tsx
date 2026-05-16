@@ -27,7 +27,7 @@
  * └────┘
  */
 
-import { FlatList, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { Alert, FlatList, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { colors, theme } from '@/platform/theme';
@@ -80,8 +80,16 @@ export function TabletNavigator({
                       currentRoute === module.route ? styles.moduleItemActive : null,
                       disabled ? styles.moduleItemLocked : null,
                     ]}
-                    onPress={() => onNavigate(module.route)}
-                    disabled={disabled}
+                    onPress={() => {
+                      if (disabled) {
+                        Alert.alert(
+                          t('layout.sidebar.noAccessTitle'),
+                          t('layout.sidebar.noAccessMessage', { module: t(module.label) }),
+                        );
+                        return;
+                      }
+                      onNavigate(module.route);
+                    }}
                   >
                     <View style={styles.iconWrap}>
                       <module.icon

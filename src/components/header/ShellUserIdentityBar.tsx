@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { UserIcon } from '@/components/Icons';
+import { Button } from '@/components/Button';
 import { BodyText, MetaText } from '@/components/Typography';
 import { theme } from '@/components/theme/theme';
 import type { AuthUser } from '@/types/store';
@@ -10,6 +11,8 @@ import type { AuthUser } from '@/types/store';
 type Props = {
   user: AuthUser | null;
   onPress: () => void;
+  onSwap?: () => void;
+  swapDisabled?: boolean;
 };
 
 function displayName(user: AuthUser | null): string {
@@ -20,7 +23,7 @@ function displayName(user: AuthUser | null): string {
   return user.id;
 }
 
-export function ShellUserIdentityBar({ user, onPress }: Props) {
+export function ShellUserIdentityBar({ user, onPress, onSwap, swapDisabled = false }: Props) {
   const { t } = useTranslation();
 
   const userName = useMemo(() => displayName(user), [user]);
@@ -28,6 +31,17 @@ export function ShellUserIdentityBar({ user, onPress }: Props) {
   return (
     <View testID="shell-user-header" style={styles.container}>
       <MetaText style={styles.title}>{t('common.appName')}</MetaText>
+      
+      {onSwap && (
+        <Button
+          title={t('header.userMenu.swap')}
+          onPress={onSwap}
+          disabled={swapDisabled}
+          variant="secondary"
+          style={styles.swapButton}
+        />
+      )}
+      
       <Pressable testID="shell-user-trigger" onPress={onPress} style={styles.userButton}>
         <View style={styles.avatarWrap}>
           <UserIcon width={18} height={18} color={theme.colors.textPrimary} />
@@ -49,9 +63,14 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingHorizontal: theme.spacing.s3,
     paddingVertical: theme.spacing.s2,
+    gap: theme.spacing.s2,
   },
   title: {
     marginBottom: 0,
+    flex: 1,
+  },
+  swapButton: {
+    minWidth: 80,
   },
   userButton: {
     alignItems: 'center',

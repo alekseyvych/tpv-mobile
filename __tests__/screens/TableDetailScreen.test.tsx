@@ -13,8 +13,10 @@ jest.mock('@/api/restaurant.api', () => ({
   restaurantApi: {
     getTableById: jest.fn(),
     getOrderById: jest.fn(),
+    removeOrderItem: jest.fn(),
+    updateOrderItem: jest.fn(),
     updateOrderItemStatus: jest.fn(),
-    acquireOrderPaymentLock: jest.fn()
+    acquireOrderPaymentLock: jest.fn(),
   }
 }));
 
@@ -89,6 +91,36 @@ describe('TableDetailScreen', () => {
     });
   });
 
+  it('does not double-load table and order on mount', async () => {
+    const mockTable = {
+      id: 'table-1',
+      number: '1',
+      status: 'occupied',
+      capacity: 4,
+      currentOrderId: 'order-1',
+    };
+    const mockOrder = {
+      id: 'order-1',
+      items: [{ id: 'item-1', productId: 'prod-1', quantity: 2, status: 'pending' }],
+    };
+
+    (restaurantApi.getTableById as jest.Mock).mockResolvedValue(mockTable);
+    (restaurantApi.getOrderById as jest.Mock).mockResolvedValue(mockOrder);
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TableDetailScreen />
+      </I18nextProvider>
+    );
+
+    await waitFor(() => {
+      expect(view.getByText(/Table 1/)).toBeTruthy();
+    });
+
+    expect(restaurantApi.getTableById).toHaveBeenCalledTimes(1);
+    expect(restaurantApi.getOrderById).toHaveBeenCalledTimes(1);
+  });
+
   it('shows no order state when table has no active order', async () => {
     const mockTable = {
       id: 'table-1',
@@ -150,5 +182,57 @@ describe('TableDetailScreen', () => {
         orderId: 'order-1'
       });
     });
+  });
+
+  it('updates local item state after remove/update without full reload', async () => {
+    const mockTable = {
+      id: 'table-1',
+      number: '1',
+      status: 'occupied',
+      capacity: 4,
+      currentOrderId: 'order-1',
+    };
+    const mockOrder = {
+      id: 'order-1',
+      items: [{ id: 'item-1', productId: 'prod-1', productName: 'Item', quantity: 2, status: 'pending' }],
+    };
+
+    (restaurantApi.getTableById as jest.Mock).mockResolvedValue(mockTable);
+    (restaurantApi.getOrderById as jest.Mock).mockResolvedValue(mockOrder);
+    (restaurantApi.updateOrderItem as jest.Mock).mockResolvedValue({});
+    (restaurantApi.removeOrderItem as jest.Mock).mockResolvedValue({});
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <TableDetailScreen />
+      </I18nextProvider>
+    );
+
+    await waitFor(() => {
+      expect(view.getByText(/Table 1/)).toBeTruthy();
+    });
+
+    fireEvent.press(view.getByText(/Active order/i));
+
+    await waitFor(() => {
+      expect(view.getByText(/2x Item/i)).toBeTruthy();
+    });
+
+    fireEvent.press(view.getByText('-'));
+
+    await waitFor(() => {
+      expect(view.getByText(/1x Item/i)).toBeTruthy();
+    });
+
+    fireEvent.press(view.getByText('x'));
+
+    await waitFor(() => {
+      expect(view.getByText(/No items/i)).toBeTruthy();
+    });
+
+    expect(restaurantApi.updateOrderItem).toHaveBeenCalledWith('order-1', 'item-1', { quantity: 1 });
+    expect(restaurantApi.removeOrderItem).toHaveBeenCalledWith('order-1', 'item-1');
+    expect(restaurantApi.getTableById).toHaveBeenCalledTimes(1);
+    expect(restaurantApi.getOrderById).toHaveBeenCalledTimes(1);
   });
 });

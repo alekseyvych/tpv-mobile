@@ -101,12 +101,14 @@ export function useAuth() {
   const swapAccountWithQuickAccess = useCallback(async (userId: string, pin: string) => {
     const previousRefreshToken = refreshToken;
 
-    // Invalid PIN or quick-access auth failures must not replace current session.
+    // Auth failure here is safe — old session is still intact.
     const nextTokens = await loginWithQuickAccess(userId, pin);
-    const nextUser = await getCurrentUser();
 
-    // Replace active session with the new user.
+    // Set tokens BEFORE calling getCurrentUser() so the API request
+    // uses the new user's token and returns the correct profile,
+    // roles, and permissions for the swapped-in account.
     await setTokens(nextTokens.accessToken, nextTokens.refreshToken);
+    const nextUser = await getCurrentUser();
     setUser(nextUser);
 
     // Best-effort revoke previous refresh token, if available.

@@ -1,3 +1,5 @@
+import { canAccessAuthRoute } from '@/auth/access';
+
 export type SwapTargetRoute = {
   name: string;
   params?: Record<string, unknown>;
@@ -11,8 +13,6 @@ type Inputs = {
   isShellRouteEnabled: (route: string) => boolean;
 };
 
-const ROLE_PRIORITY = ['WAITER', 'CASHIER', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'] as const;
-
 const DINING_DETAIL_ROUTES = new Set(['DiningFloor', 'TableDetail', 'OrderCreation', 'RestaurantCheckout']);
 const POS_ROUTES = new Set(['Checkout', 'Cart', 'Payment', 'Receipt']);
 const KITCHEN_ROUTES = new Set(['KitchenDisplay']);
@@ -24,37 +24,8 @@ const SETTINGS_DETAIL_ROUTES = new Set([
   'SettingsInactivity',
 ]);
 
-function hasRoleAtLeast(roles: string[], minimumRole: (typeof ROLE_PRIORITY)[number]): boolean {
-  const minIndex = ROLE_PRIORITY.indexOf(minimumRole);
-  if (minIndex < 0) return true;
-
-  return roles
-    .map((role) => role.toUpperCase())
-    .some((role) => {
-      const roleIndex = ROLE_PRIORITY.indexOf(role as (typeof ROLE_PRIORITY)[number]);
-      return roleIndex >= minIndex;
-    });
-}
-
-function hasPermission(permissions: string[], name: string): boolean {
-  return permissions.map((permission) => permission.toUpperCase()).includes(name.toUpperCase());
-}
-
 function isRouteAllowedByAuth(routeName: string, roles: string[], permissions: string[]): boolean {
-  if (KITCHEN_ROUTES.has(routeName)) {
-    return hasRoleAtLeast(roles, 'MANAGER');
-  }
-
-  if (routeName === 'SettingsDeviceInfo') {
-    return hasRoleAtLeast(roles, 'MANAGER');
-  }
-
-  if (routeName === 'TerminalSelection') {
-    if (permissions.length === 0) return true;
-    return hasPermission(permissions, 'TERMINALS_READ');
-  }
-
-  return true;
+  return canAccessAuthRoute(routeName, roles, permissions);
 }
 
 function shellRouteForStackRoute(routeName: string): string | null {

@@ -14,6 +14,16 @@ import { BodyText, ErrorText } from '@/components/Typography';
 import { useSettings } from '@/hooks/useSettings';
 import { theme } from '@/components/theme/theme';
 
+function extractPermissionError(error: unknown): boolean {
+  const apiError = error as Record<string, unknown> | null;
+  if (!apiError) return false;
+  const status = apiError.status as number | undefined;
+  if (status === 403) return true;
+  const response = apiError.response as Record<string, unknown> | null;
+  if (response && response.status === 403) return true;
+  return false;
+}
+
 type Props = {
   onBack?: () => void;
   embedded?: boolean;
@@ -47,9 +57,12 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
     try {
       await refreshDeviceContext();
       setMessage(t('settings.deviceContextRefreshed'));
-    } catch (requestError) {
-      const nextError = requestError as { message?: string } | undefined;
-      setError(nextError?.message || t('settings.deviceContextRefreshError'));
+    } catch (error) {
+      if (extractPermissionError(error)) {
+        setError(t('settings.deviceContextPermissionError'));
+      } else {
+        setError(t('settings.deviceContextRefreshError'));
+      }
     } finally {
       setBusy(false);
     }
@@ -66,9 +79,12 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
         deviceType: deviceType.trim() || undefined,
       });
       setMessage(t('settings.deviceContextSaved'));
-    } catch (requestError) {
-      const nextError = requestError as { message?: string } | undefined;
-      setError(nextError?.message || t('settings.deviceContextSaveError'));
+    } catch (error) {
+      if (extractPermissionError(error)) {
+        setError(t('settings.deviceContextPermissionError'));
+      } else {
+        setError(t('settings.deviceContextSaveError'));
+      }
     } finally {
       setBusy(false);
     }
@@ -81,9 +97,12 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
     try {
       await clearRemoteDeviceContext();
       setMessage(t('settings.deviceContextCleared'));
-    } catch (requestError) {
-      const nextError = requestError as { message?: string } | undefined;
-      setError(nextError?.message || t('settings.deviceContextClearError'));
+    } catch (error) {
+      if (extractPermissionError(error)) {
+        setError(t('settings.deviceContextPermissionError'));
+      } else {
+        setError(t('settings.deviceContextClearError'));
+      }
     } finally {
       setBusy(false);
     }

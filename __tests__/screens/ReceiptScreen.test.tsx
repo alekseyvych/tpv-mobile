@@ -1,4 +1,4 @@
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { I18nextProvider } from 'react-i18next';
 
 import { getSaleReceipt } from '@/api/sales.api';
@@ -59,6 +59,39 @@ describe('ReceiptScreen', () => {
 
     await waitFor(() => {
       expect(view.getByText(/Receipt details could not be loaded|recibo/i)).toBeTruthy();
+    });
+  });
+
+  it('retries receipt loading after a failure', async () => {
+    (getSaleReceipt as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce({
+        id: 'r1',
+        saleId: 'sale-1',
+        saleNumber: 'S-100',
+        timestamp: new Date().toISOString(),
+        lines: [{ productName: 'Americano', quantity: 1, unitPrice: 2.5, lineTotal: 2.5 }],
+        subtotal: 2.07,
+        tax: 0.43,
+        total: 2.5,
+        payments: [{ method: 'CASH', amount: 2.5 }],
+        receiptNumber: 'R-2',
+      });
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <ReceiptScreen onDone={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    await waitFor(() => {
+      expect(view.getByText(/Receipt details could not be loaded|recibo/i)).toBeTruthy();
+    });
+
+    fireEvent.press(view.getByText(/Retry|Reintentar/));
+
+    await waitFor(() => {
+      expect(view.getByText(/1 x Americano/)).toBeTruthy();
     });
   });
 });

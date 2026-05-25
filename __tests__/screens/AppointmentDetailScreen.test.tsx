@@ -62,4 +62,19 @@ describe('AppointmentDetailScreen', () => {
       expect(onUpdated).toHaveBeenCalled();
     });
   });
+
+  it('renders localized load error instead of raw backend message', async () => {
+    mockGetAppointmentById.mockRejectedValueOnce(new Error('sql timeout 500 stack'));
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <AppointmentDetailScreen appointmentId="a1" onBack={() => undefined} onUpdated={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    await waitFor(() => {
+      expect(view.getByText(/We could not fetch appointments|No se pudieron cargar las citas/)).toBeTruthy();
+    });
+    expect(view.queryByText(/sql timeout 500 stack/)).toBeNull();
+  });
 });

@@ -46,6 +46,10 @@ describe('KitchenDisplayScreen', () => {
     setupDefaultMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('renders kitchen items on phone layout', () => {
     const view = render(
       <I18nextProvider i18n={i18n}>
@@ -117,5 +121,41 @@ describe('KitchenDisplayScreen', () => {
 
     expect(view.getAllByText(/Pending|Pendiente/).length).toBeGreaterThan(0);
     expect(view.getAllByText(/Preparing|Preparando/).length).toBeGreaterThan(0);
+  });
+
+  it('does not start overlapping polling requests while one poll is in flight', () => {
+    jest.useFakeTimers();
+
+    let resolveLoad: (() => void) | undefined;
+    const loadKitchenOrders = jest.fn(
+      () =>
+        new Promise<never[]>((resolve) => {
+          resolveLoad = () => resolve([]);
+        }),
+    );
+
+    mockUseKitchenOrders.mockReturnValue({
+      ...mockUseKitchenOrders(),
+      loadKitchenOrders,
+    });
+
+    render(
+      <I18nextProvider i18n={i18n}>
+        <KitchenDisplayScreen onBack={() => undefined} />
+      </I18nextProvider>
+    );
+
+    // Initial load fires once on mount.
+    expect(loadKitchenOrders).toHaveBeenCalledTimes(1);
+
+    // Poll ticks at 30s, 60s, 90s; while first poll is unresolved,
+    // only the first tick should trigger a request.
+    jest.advanceTimersByTime(90_000);
+    expect(loadKitchenOrders).toHaveBeenCalledTimes(2);
+
+    // Resolve to avoid dangling promise warnings in fake-timer mode.
+    if (resolveLoad) {
+      resolveLoad();
+    }
   });
 });

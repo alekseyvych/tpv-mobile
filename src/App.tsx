@@ -18,7 +18,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { useDevicePairing } from '@/hooks/useDevicePairing';
 import { useSync } from '@/hooks/useSync';
 import { useAutoLock } from '@/hooks/useAutoLock';
+import { usePermissionSync } from '@/hooks/usePermissionSync';
 import { markActivity } from '@/hooks/auto-lock.activity';
+import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { useAuthStore } from '@/store/auth.store';
 import { useContextStore } from '@/store/context.store';
 import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
@@ -52,6 +54,7 @@ import { DeviceInfoScreen } from '@/screens/settings/DeviceInfoScreen';
 import { LanguageScreen } from '@/screens/settings/LanguageScreen';
 import { InactivitySettingsScreen } from '@/screens/settings/InactivitySettingsScreen';
 import { LogoutConfirmationScreen } from '@/screens/settings/LogoutConfirmationScreen';
+import { MyPermissionsScreen } from '@/screens/settings/MyPermissionsScreen';
 import { ProfileScreen } from '@/screens/settings/ProfileScreen';
 import { SettingsContainerScreen } from '@/screens/settings/SettingsContainerScreen';
 import { TerminalSelectionScreen } from '@/features/terminal-selection/screens/TerminalSelectionScreen';
@@ -62,7 +65,7 @@ import {
   resolveAccountSwapFallbackRoute,
 } from '@/navigation/accountSwapRoute';
 import {
-  isShellRouteEnabledForTerminal,
+  isShellRouteAccessible,
   resolveShellRoute,
   usesDiningFloorNavigation,
   type ShellRouteName,
@@ -99,6 +102,7 @@ type RootStackParamList = {
   Settings: undefined;
   More: undefined;
   SettingsProfile: undefined;
+  SettingsPermissions: undefined;
   SettingsDeviceInfo: undefined;
   SettingsLanguage: undefined;
   SettingsLogout: undefined;
@@ -134,6 +138,8 @@ function AuthenticatedShellScreen({
   const { t } = useTranslation();
   const { logout, swapAccountWithQuickAccess } = useAuth();
   const authSessionVersion = useAuthStore((s) => s.authSessionVersion);
+  const roles = useAuthStore((s) => s.roles);
+  const permissions = useAuthStore((s) => s.permissions);
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const operatingMode = useTerminalStore((s) => s.operatingMode);
   const capabilities = useTerminalStore((s) => s.capabilities);
@@ -145,13 +151,15 @@ function AuthenticatedShellScreen({
   const isShellRouteEnabled = useMemo(
     () =>
       (route: string) =>
-        isShellRouteEnabledForTerminal(
+        isShellRouteAccessible(
           route,
           Boolean(selectedTerminalId),
           operatingMode,
           capabilities,
+          roles,
+          permissions,
         ),
-    [capabilities, operatingMode, selectedTerminalId],
+    [capabilities, operatingMode, permissions, roles, selectedTerminalId],
   );
 
   async function handleLogout() {
@@ -175,6 +183,11 @@ function AuthenticatedShellScreen({
       allowCheckoutFallback: cardRuntimePhase === 'idle',
       isShellRouteEnabled,
     };
+
+    // Clear restaurant/dining context on swap to avoid stale UI
+    const restaurantStore = useRestaurantStore.getState();
+    restaurantStore.setSelectedTable(null);
+    restaurantStore.setSelectedOrder(null);
 
     if (!canKeepCurrentRouteAfterSwap(swapRouteInput)) {
       const fallback = resolveAccountSwapFallbackRoute(swapRouteInput);
@@ -290,6 +303,8 @@ export default function App() {
   const { trackEvent, setContext } = useAnalytics();
   const { pairWithManualCode, pairWithToken, lastResult, reset } = useDevicePairing();
   const user = useAuthStore((s) => s.user);
+  const roles = useAuthStore((s) => s.roles);
+  const permissions = useAuthStore((s) => s.permissions);
   const logout = useAuthStore((s) => s.logout);
   const setSelectedTable = useRestaurantStore((s) => s.setSelectedTable);
   const setSelectedOrder = useRestaurantStore((s) => s.setSelectedOrder);
@@ -300,7 +315,14 @@ export default function App() {
   const capabilities = useTerminalStore((s) => s.capabilities);
   const [currentRouteName, setCurrentRouteName] = useState<string>('Login');
   const isRouteEnabled = (route: string) =>
-    isShellRouteEnabledForTerminal(route, Boolean(selectedTerminalId), operatingMode, capabilities);
+    isShellRouteAccessible(
+      route,
+      Boolean(selectedTerminalId),
+      operatingMode,
+      capabilities,
+      roles,
+      permissions,
+    );
 
   const autoLockHandlers = useMemo(
     () => ({
@@ -328,6 +350,8 @@ export default function App() {
     onShortLock: autoLockHandlers.onShortLock,
     onLongInactivity: autoLockHandlers.onLongInactivity,
   });
+
+  usePermissionSync();
 
   useEffect(() => {
     void trackEvent('app.started');
@@ -365,6 +389,7 @@ export default function App() {
           }
         }}
       >
+        <SyncStatusBanner />
         <View
           style={{ flex: 1 }}
           onTouchStart={() => {
@@ -753,7 +778,11 @@ export default function App() {
         <Stack.Screen
           name="KitchenDisplay"
           children={({ navigation, route }) => (
-            <AuthenticatedShellScreen navigation={navigation} currentRoute="KitchenDisplay">
+            <AuthenticatedShellScreen
+              navigation={navigation}
+              currentRoute="KitchenDisplay"
+              isKitchenMode={capabilities?.kitchenDisplayOnly === true}
+            >
               <KitchenDisplayScreen
                 onBack={() => navigation.goBack()}
                 initialStation={route.params?.station}
@@ -768,6 +797,7 @@ export default function App() {
               <SettingsContainerScreen
                 onBack={() => navigation.goBack()}
                 onOpenProfile={() => navigation.navigate('SettingsProfile')}
+                onOpenPermissions={() => navigation.navigate('SettingsPermissions')}
                 onOpenDevice={() => navigation.navigate('SettingsDeviceInfo')}
                 onOpenLanguage={() => navigation.navigate('SettingsLanguage')}
                 onOpenLogout={() => navigation.navigate('SettingsLogout')}
@@ -792,6 +822,14 @@ export default function App() {
           children={({ navigation }) => (
             <AuthenticatedShellScreen navigation={navigation} currentRoute="Settings">
               <ProfileScreen onBack={() => navigation.goBack()} />
+            </AuthenticatedShellScreen>
+          )}
+        />
+        <Stack.Screen
+          name="SettingsPermissions"
+          children={({ navigation }) => (
+            <AuthenticatedShellScreen navigation={navigation} currentRoute="Settings">
+              <MyPermissionsScreen onBack={() => navigation.goBack()} />
             </AuthenticatedShellScreen>
           )}
         />

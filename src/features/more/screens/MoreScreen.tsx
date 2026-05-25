@@ -40,7 +40,6 @@ export function MoreScreen({ onNavigate, isRouteEnabled }: MoreScreenProps) {
     'catalog',
     'inventory',
     'customers',
-    'restaurant',
     'workshop',
     'fiscal',
     'analytics',

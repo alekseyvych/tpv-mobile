@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
+import { useAuthStore } from '@/store/auth.store';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -11,6 +12,17 @@ import { Topbar } from '@/components/Topbar';
 import { BodyText, ErrorText } from '@/components/Typography';
 import { theme } from '@/components/theme/theme';
 import { useSettings } from '@/hooks/useSettings';
+import { hasRoleAtLeast } from '@/auth/access';
+
+function extractPermissionError(error: unknown): boolean {
+  const apiError = error as Record<string, unknown> | null;
+  if (!apiError) return false;
+  const status = apiError.status as number | undefined;
+  if (status === 403) return true;
+  const response = apiError.response as Record<string, unknown> | null;
+  if (response && response.status === 403) return true;
+  return false;
+}
 
 type Props = {
   onBack?: () => void;
@@ -21,7 +33,7 @@ function isValidPassword(value: string): boolean {
   return value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value);
 }
 
-export function ProfileScreen({ onBack, embedded = false }: Props) {
+function ProfileScreenContent({ onBack, embedded = false }: Props) {
   const { t } = useTranslation();
   const { user, changeOwnPassword } = useSettings();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -48,9 +60,12 @@ export function ProfileScreen({ onBack, embedded = false }: Props) {
       setCurrentPassword('');
       setNewPassword('');
       setSaved(true);
-    } catch (requestError) {
-      const nextError = requestError as { message?: string } | undefined;
-      setError(nextError?.message || t('settings.passwordChangeError'));
+    } catch (error) {
+      if (extractPermissionError(error)) {
+        setError(t('settings.passwordChangePermissionError'));
+      } else {
+        setError(t('settings.passwordChangeError'));
+      }
     } finally {
       setBusy(false);
     }
@@ -117,6 +132,24 @@ export function ProfileScreen({ onBack, embedded = false }: Props) {
       <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );
+}
+
+export function ProfileScreen({ onBack, embedded = false }: Props) {
+  const roles = useAuthStore((s) => s.roles);
+  const { t } = useTranslation();
+
+  // When embedded in Settings, ProfileScreen is only accessible by MANAGER+ role
+  // Re-check permission here to prevent UI from showing password change after admin→waiter swap
+  if (embedded && !hasRoleAtLeast(roles, 'MANAGER')) {
+    return (
+      <Card>
+        <SectionHeader title={t('settings.profileTitle')} />
+        <ErrorText>{t('settings.passwordChangePermissionError')}</ErrorText>
+      </Card>
+    );
+  }
+
+  return <ProfileScreenContent onBack={onBack} embedded={embedded} />;
 }
 
 const styles = StyleSheet.create({

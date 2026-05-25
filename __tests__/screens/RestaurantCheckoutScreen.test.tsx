@@ -16,6 +16,7 @@ import { getTerminal } from '@/api/terminals.api';
 import { RestaurantCheckoutScreen } from '@/screens/dining/RestaurantCheckoutScreen';
 
 const mockOnBack = jest.fn();
+const mockOnSuccess = jest.fn();
 
 jest.mock('@/api/restaurant.api', () => ({
   restaurantApi: {
@@ -60,7 +61,12 @@ jest.mock('@/store/terminal.store', () => ({
 function renderScreen() {
   return render(
     <I18nextProvider i18n={i18n}>
-      <RestaurantCheckoutScreen tableId="table-1" orderId="order-1" onBack={mockOnBack} />
+      <RestaurantCheckoutScreen
+        tableId="table-1"
+        orderId="order-1"
+        onBack={mockOnBack}
+        onSuccess={mockOnSuccess}
+      />
     </I18nextProvider>
   );
 }
@@ -157,6 +163,10 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       name: 'Main Register',
       terminalId: 'T-1'
     });
+  });
+
+  afterEach(() => {
+    mockOnSuccess.mockReset();
   });
 
   it('creates umbrella with option configuration from modified items', async () => {
@@ -321,6 +331,33 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       );
       expect(restaurantApi.releaseOrderPaymentLock).toHaveBeenCalledWith('order-1', 'terminal-1');
       expect(getSaleReceipt).toHaveBeenCalledWith('sale-resume');
+      expect(mockOnSuccess).toHaveBeenCalled();
+    });
+  });
+
+  it('still finishes closed checkout when receipt refresh fails', async () => {
+    (restaurantApi.getOpenPosSaleResume as jest.Mock).mockResolvedValue({
+      saleId: 'sale-resume',
+      orderItemIdToSaleLineId: {
+        'item-burger': 'sale-line-burger',
+        'item-fries': 'sale-line-fries'
+      }
+    });
+    (restaurantApi.settlePaidGroupItems as jest.Mock).mockResolvedValue({
+      orderClosed: true,
+      remainingItemCount: 0,
+    });
+    (getSaleReceipt as jest.Mock).mockRejectedValue(new Error('receipt unavailable'));
+
+    const view = renderScreen();
+
+    fireEvent.press(await view.findByText(/pay card/i));
+    fireEvent.press(await view.findByText(/confirm payment/i));
+
+    await waitFor(() => {
+      expect(restaurantApi.releaseOrderPaymentLock).toHaveBeenCalledWith('order-1', 'terminal-1');
+      expect(getSaleReceipt).toHaveBeenCalledWith('sale-resume');
+      expect(mockOnSuccess).toHaveBeenCalled();
     });
   });
 

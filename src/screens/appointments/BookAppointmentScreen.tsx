@@ -10,14 +10,19 @@ import {
 } from '@/api/appointments.api';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
 import { Input } from '@/components/Input';
 import { ListItemCard } from '@/components/ListItemCard';
+import { LoadingState } from '@/components/LoadingState';
 import { ScreenContent, ScreenPage } from '@/components/ScreenLayout';
 import { SectionHeader } from '@/components/SectionHeader';
+import { StatusPill } from '@/components/StatusPill';
 import { Topbar } from '@/components/Topbar';
 import { BodyText, ErrorText, MetaText } from '@/components/Typography';
 import { theme } from '@/components/theme/theme';
 import type { AppointmentAvailabilitySlotDto, AppointmentCustomerPickDto, AppointmentStaffPickDto } from '@/types/api';
+import { useOfflineDetection } from '@/utils/offline';
 
 type Props = {
   onBack: () => void;
@@ -26,6 +31,7 @@ type Props = {
 
 export function BookAppointmentScreen({ onBack, onCreated }: Props) {
   const { t } = useTranslation();
+  const { isOnline } = useOfflineDetection();
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState<AppointmentCustomerPickDto[]>([]);
   const [customerId, setCustomerId] = useState('');
@@ -40,6 +46,12 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
   const [notes, setNotes] = useState('');
   const [slots, setSlots] = useState<AppointmentAvailabilitySlotDto[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [loadingCustomers, setLoadingCustomers] = useState(false);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+  const [customerError, setCustomerError] = useState<string | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [hasSearchedCustomers, setHasSearchedCustomers] = useState(false);
+  const [hasLoadedStaff, setHasLoadedStaff] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -48,23 +60,36 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
   async function onSearchCustomers() {
     if (customerSearch.trim().length < 2) {
       setCustomerResults([]);
+      setCustomerError(null);
       return;
     }
 
+    setLoadingCustomers(true);
+    setCustomerError(null);
+    setHasSearchedCustomers(true);
     try {
       const result = await listAppointmentCustomers(customerSearch.trim());
       setCustomerResults(result);
     } catch {
       setCustomerResults([]);
+      setCustomerError(t('appointments.loadErrorDescription'));
+    } finally {
+      setLoadingCustomers(false);
     }
   }
 
   async function onLoadStaff() {
+    setLoadingStaff(true);
+    setStaffError(null);
+    setHasLoadedStaff(true);
     try {
       const result = await listAppointmentStaff();
       setStaff(result);
     } catch {
       setStaff([]);
+      setStaffError(t('appointments.loadErrorDescription'));
+    } finally {
+      setLoadingStaff(false);
     }
   }
 
@@ -134,6 +159,7 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
       <ScreenContent>
         <Card>
           <SectionHeader title={t('appointments.bookTitle')} subtitle={t('appointments.bookSubtitle')} />
+          {!isOnline ? <StatusPill label={t('sync.offline')} tone="warning" /> : null}
           <Input
             value={customerSearch}
             onChangeText={setCustomerSearch}
@@ -143,6 +169,19 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
               void onSearchCustomers();
             }}
           />
+          {loadingCustomers ? (
+            <LoadingState title={t('common.loading')} description={t('appointments.loadingDescription')} />
+          ) : null}
+          {customerError ? (
+            <ErrorState
+              title={t('appointments.loadErrorTitle')}
+              description={customerError}
+              actionLabel={t('common.retry')}
+              onAction={() => {
+                void onSearchCustomers();
+              }}
+            />
+          ) : null}
           <View style={styles.spacer} />
           {customerId ? (
             <ListItemCard>
@@ -159,25 +198,38 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
               />
             </ListItemCard>
           ) : (
-            <FlatList
-              data={customerResults}
-              keyExtractor={(item) => item.id}
-              style={styles.pickList}
-              renderItem={({ item }) => (
-                <ListItemCard>
-                  <MetaText>{item.name}</MetaText>
-                  <BodyText>{item.id}</BodyText>
-                  <Button
-                    title={t('appointments.selectCustomer')}
-                    onPress={() => {
-                      setCustomerId(item.id);
-                      setCustomerLabel(item.name);
-                      setCustomerResults([]);
-                    }}
-                  />
-                </ListItemCard>
+            <>
+              {hasSearchedCustomers && customerSearch.trim().length >= 2 && !loadingCustomers && !customerError && customerResults.length === 0 ? (
+                <EmptyState
+                  title={t('appointments.emptyTitle')}
+                  description={t('appointments.empty')}
+                  actionLabel={t('common.retry')}
+                  onAction={() => {
+                    void onSearchCustomers();
+                  }}
+                />
+              ) : (
+                <FlatList
+                  data={customerResults}
+                  keyExtractor={(item) => item.id}
+                  style={styles.pickList}
+                  renderItem={({ item }) => (
+                    <ListItemCard>
+                      <MetaText>{item.name}</MetaText>
+                      <BodyText>{item.id}</BodyText>
+                      <Button
+                        title={t('appointments.selectCustomer')}
+                        onPress={() => {
+                          setCustomerId(item.id);
+                          setCustomerLabel(item.name);
+                          setCustomerResults([]);
+                        }}
+                      />
+                    </ListItemCard>
+                  )}
+                />
               )}
-            />
+            </>
           )}
 
           <View style={styles.spacer} />
@@ -201,6 +253,17 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
           <Input value={duration} onChangeText={setDuration} placeholder={t('appointments.durationPlaceholder')} editable={!submitting} keyboardType="numeric" />
           <View style={styles.spacer} />
           <Input value={assignedTo} onChangeText={setAssignedTo} placeholder={t('appointments.staffPlaceholder')} editable={!submitting} onFocus={() => void onLoadStaff()} />
+          {loadingStaff ? <LoadingState title={t('common.loading')} /> : null}
+          {staffError ? (
+            <ErrorState
+              title={t('appointments.loadErrorTitle')}
+              description={staffError}
+              actionLabel={t('common.retry')}
+              onAction={() => {
+                void onLoadStaff();
+              }}
+            />
+          ) : null}
           {staff.length > 0 ? (
             <FlatList
               data={staff.slice(0, 8)}
@@ -214,6 +277,8 @@ export function BookAppointmentScreen({ onBack, onCreated }: Props) {
                 </ListItemCard>
               )}
             />
+          ) : hasLoadedStaff && assignedTo.trim().length === 0 && !loadingStaff && !staffError ? (
+            <EmptyState title={t('appointments.emptyTitle')} description={t('appointments.empty')} />
           ) : null}
 
           <View style={styles.spacer} />

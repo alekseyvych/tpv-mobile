@@ -13,13 +13,15 @@ import { DeviceInfoScreen } from '@/screens/settings/DeviceInfoScreen';
 import { InactivitySettingsScreen } from '@/screens/settings/InactivitySettingsScreen';
 import { LanguageScreen } from '@/screens/settings/LanguageScreen';
 import { LogoutConfirmationScreen } from '@/screens/settings/LogoutConfirmationScreen';
+import { MyPermissionsScreen } from '@/screens/settings/MyPermissionsScreen';
 import { ProfileScreen } from '@/screens/settings/ProfileScreen';
 
-type SettingsSection = 'profile' | 'language' | 'device' | 'inactivity' | 'logout';
+type SettingsSection = 'profile' | 'permissions' | 'language' | 'device' | 'inactivity' | 'logout';
 
 type Props = {
   onBack: () => void;
   onOpenProfile: () => void;
+  onOpenPermissions: () => void;
   onOpenLanguage: () => void;
   onOpenDevice: () => void;
   onOpenInactivity: () => void;
@@ -29,6 +31,7 @@ type Props = {
 export function SettingsContainerScreen({
   onBack,
   onOpenProfile,
+  onOpenPermissions,
   onOpenLanguage,
   onOpenDevice,
   onOpenInactivity,
@@ -40,6 +43,7 @@ export function SettingsContainerScreen({
 
   const sections: { id: SettingsSection; label: string; onPress: () => void }[] = [
     { id: 'profile', label: t('settings.profileTitle'), onPress: onOpenProfile },
+    { id: 'permissions', label: t('settings.myPermissions.menuTitle'), onPress: onOpenPermissions },
     { id: 'language', label: t('settings.languageTitle'), onPress: onOpenLanguage },
     { id: 'device', label: t('settings.deviceInfoTitle'), onPress: onOpenDevice },
     { id: 'inactivity', label: t('inactivity.title'), onPress: onOpenInactivity },
@@ -79,6 +83,9 @@ export function SettingsContainerScreen({
     }
     if (activeSection === 'language') {
       return <LanguageScreen embedded />;
+    }
+    if (activeSection === 'permissions') {
+      return <MyPermissionsScreen embedded />;
     }
     if (activeSection === 'device') {
       return <DeviceInfoScreen embedded />;

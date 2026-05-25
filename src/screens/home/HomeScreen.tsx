@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -8,6 +8,7 @@ import { getActiveCashShift } from '@/api/cashShifts.api';
 import { getKitchenOrders } from '@/api/kitchen.api';
 import { restaurantApi } from '@/api/restaurant.api';
 import { getTerminal } from '@/api/terminals.api';
+import { canAccessAuthRoute } from '@/auth/access';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
@@ -62,10 +63,6 @@ type TableSearchResult = {
   currentOrderId: string | null;
 };
 
-function hasKeyword(values: string[], keywords: string[]): boolean {
-  return values.some((value) => keywords.some((keyword) => value.includes(keyword)));
-}
-
 function toSafeErrorStatus(error: unknown): number | null {
   const fromStatus = (error as { status?: number } | undefined)?.status;
   if (typeof fromStatus === 'number') return fromStatus;
@@ -103,46 +100,34 @@ export function HomeScreen({
   const permissions = useAuthStore((s) => s.permissions ?? []);
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const activeCashShiftId = useTerminalStore((s) => s.activeCashShiftId);
+  const terminalName = useTerminalStore((s) => s.terminalName);
+  const setTerminalName = useTerminalStore((s) => s.setTerminalName);
   const resumeContext = useWaiterHomeStore((s) => s.context);
   const clearResumeContext = useWaiterHomeStore((s) => s.clearResumeContext);
 
   const [shiftStatus, setShiftStatus] = useState<ShiftStatus>('loading');
-  const [terminalName, setTerminalName] = useState<string | null>(null);
   const [resumePreview, setResumePreview] = useState<ResumePreview | null>(null);
   const [resumeLoading, setResumeLoading] = useState(false);
   const [readyLoading, setReadyLoading] = useState(false);
   const [readyError, setReadyError] = useState<string | null>(null);
   const [readyTickets, setReadyTickets] = useState<ReadyTicket[]>([]);
   const [tableSearch, setTableSearch] = useState('');
+  const tableSearchRef = useRef('');
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchResults, setSearchResults] = useState<TableSearchResult[]>([]);
 
-  const roleValues = useMemo(() => roles.map((role) => String(role).toLowerCase()), [roles]);
-  const permissionValues = useMemo(
-    () => permissions.map((permission) => String(permission).toLowerCase()),
-    [permissions],
-  );
-
   const canAccessDining = useMemo(() => {
-    return (
-      hasKeyword(roleValues, ['waiter', 'manager', 'admin']) ||
-      hasKeyword(permissionValues, ['dining', 'restaurant', 'table', 'order'])
-    );
-  }, [roleValues, permissionValues]);
+    return canAccessAuthRoute('DiningFloor', roles, permissions);
+  }, [permissions, roles]);
 
   const canAccessKitchen = useMemo(() => {
-    return (
-      hasKeyword(roleValues, ['waiter', 'manager', 'admin']) ||
-      hasKeyword(permissionValues, ['kitchen', 'bar'])
-    );
-  }, [roleValues, permissionValues]);
+    return canAccessAuthRoute('KitchenDisplay', roles, permissions);
+  }, [permissions, roles]);
 
   const canAccessAppointments = useMemo(() => {
-    return (
-      hasKeyword(roleValues, ['manager', 'admin']) ||
-      hasKeyword(permissionValues, ['appointment'])
-    );
-  }, [roleValues, permissionValues]);
+    return canAccessAuthRoute('AppointmentsList', roles, permissions);
+  }, [permissions, roles]);
 
   const refreshShiftStatus = useCallback(async () => {
     if (!selectedTerminalId) {
@@ -153,8 +138,11 @@ export function HomeScreen({
 
     setShiftStatus('loading');
     try {
-      const terminal = await getTerminal(selectedTerminalId);
-      setTerminalName(terminal.name || terminal.terminalId || selectedTerminalId);
+      // Skip getTerminal if we already have the name cached in the store for this terminal
+      if (!terminalName) {
+        const terminal = await getTerminal(selectedTerminalId);
+        setTerminalName(terminal.name || terminal.terminalId || selectedTerminalId);
+      }
 
       if (activeCashShiftId) {
         setShiftStatus('open');
@@ -166,7 +154,7 @@ export function HomeScreen({
       setTerminalName(selectedTerminalId);
       setShiftStatus('unavailable');
     }
-  }, [activeCashShiftId, selectedTerminalId]);
+  }, [activeCashShiftId, selectedTerminalId, terminalName, setTerminalName]);
 
   const refreshResumePreview = useCallback(async () => {
     const contextTableId = resumeContext.lastTableId;
@@ -279,7 +267,9 @@ export function HomeScreen({
       void refreshShiftStatus();
       void refreshResumePreview();
       void refreshReadyTickets();
-      void searchTables(tableSearch);
+      if (tableSearchRef.current.trim()) {
+        void searchTables(tableSearchRef.current);
+      }
 
       const pollId = setInterval(() => {
         void refreshReadyTickets();
@@ -288,7 +278,7 @@ export function HomeScreen({
       return () => {
         clearInterval(pollId);
       };
-    }, [refreshReadyTickets, refreshResumePreview, refreshShiftStatus, searchTables, tableSearch]),
+    }, [refreshReadyTickets, refreshResumePreview, refreshShiftStatus, searchTables]),
   );
 
   const quickShortcuts = useMemo(
@@ -360,11 +350,6 @@ export function HomeScreen({
               onPress={() => onOpenTableContext(resumePreview.tableId, resumePreview.orderId ?? undefined)}
             >
               <TitleText style={styles.resumeTitle}>{t('home.resume.tableLabel', { table: resumePreview.tableNumber })}</TitleText>
-              <MetaText>
-                {resumePreview.orderId
-                  ? t('home.resume.orderLabel', { orderId: resumePreview.orderId })
-                  : t('home.resume.noOrder')}
-              </MetaText>
             </Pressable>
           ) : (
             <EmptyState title={t('home.resume.emptyTitle')} description={t('home.resume.emptyDescription')} />
@@ -417,7 +402,11 @@ export function HomeScreen({
             value={tableSearch}
             onChangeText={(value) => {
               setTableSearch(value);
-              void searchTables(value);
+              tableSearchRef.current = value;
+              if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+              searchDebounceRef.current = setTimeout(() => {
+                void searchTables(value);
+              }, 300);
             }}
             placeholder={t('home.search.placeholder')}
             placeholderTextColor={theme.colors.textMuted}

@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { I18nextProvider } from 'react-i18next';
 import type { ComponentProps } from 'react';
+import { TextInput } from 'react-native';
 
 import i18n from '@/i18n/config';
 import { HomeScreen } from '@/screens/home/HomeScreen';
@@ -21,6 +22,8 @@ let mockAuthState: {
 let mockTerminalState: {
   selectedTerminalId: string | null;
   activeCashShiftId: string | null;
+  terminalName: string | null;
+  setTerminalName: jest.Mock;
 };
 
 let mockWaiterHomeState: {
@@ -77,7 +80,12 @@ jest.mock('@/store/waiter-home.store', () => ({
 }));
 
 describe('HomeScreen', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
+    jest.clearAllMocks();
     mockAuthState = {
       user: { firstName: 'Ana', email: 'ana@example.com' },
       roles: ['waiter'],
@@ -87,6 +95,8 @@ describe('HomeScreen', () => {
     mockTerminalState = {
       selectedTerminalId: 'term-1',
       activeCashShiftId: 'shift-1',
+      terminalName: null,
+      setTerminalName: jest.fn(),
     };
 
     mockWaiterHomeState = {
@@ -198,5 +208,40 @@ describe('HomeScreen', () => {
     fireEvent.press(resumeCard);
 
     expect(props.onOpenTableContext).toHaveBeenCalledWith('table-99', 'order-99');
+  });
+
+  it('debounces table search calls and keeps last query', async () => {
+    jest.useFakeTimers();
+    mockGetTables.mockResolvedValue({ data: [] });
+
+    const { view } = renderScreen();
+    const input = view.UNSAFE_getByType(TextInput);
+
+    fireEvent.changeText(input, 't');
+    fireEvent.changeText(input, 'ta');
+    fireEvent.changeText(input, 'tab');
+
+    expect(mockGetTables).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(299);
+    expect(mockGetTables).toHaveBeenCalledTimes(0);
+
+    jest.advanceTimersByTime(1);
+    await waitFor(() => {
+      expect(mockGetTables).toHaveBeenCalledTimes(1);
+    });
+    expect(mockGetTables).toHaveBeenLastCalledWith({ search: 'tab' });
+  });
+
+  it('uses terminal name from store cache without refetching terminal details', async () => {
+    mockTerminalState.terminalName = 'Cached Terminal';
+
+    const { view } = renderScreen();
+
+    await waitFor(() => {
+      expect(view.getByText(/Cached Terminal/)).toBeTruthy();
+    });
+
+    expect(mockGetTerminal).not.toHaveBeenCalled();
   });
 });

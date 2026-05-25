@@ -206,7 +206,8 @@ export function TableDetailScreen() {
           ),
         );
         await restaurantApi.removeOrderItem(currentOrderId, itemId);
-        await loadTableAndOrder();
+        // Optimistic: remove item from local state; no need for full reload
+        setItems((prev) => prev.filter((item) => item.id !== itemId));
       } catch (err) {
         const statusCode =
           (err as { status?: number } | undefined)?.status ??
@@ -236,7 +237,7 @@ export function TableDetailScreen() {
         );
       }
     },
-    [currentOrderId, loadTableAndOrder, paymentLocked, t],
+    [currentOrderId, paymentLocked, t],
   );
 
   const handleUpdateItem = useCallback(
@@ -254,7 +255,12 @@ export function TableDetailScreen() {
           ),
         );
         await restaurantApi.updateOrderItem(currentOrderId, itemId, { quantity: nextQuantity });
-        await loadTableAndOrder();
+        // Optimistic: update quantity in local state; no need for full reload
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === itemId ? { ...item, quantity: nextQuantity, isUpdatingStatus: false } : item,
+          ),
+        );
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to update item');
         setItems((prev) =>
@@ -264,14 +270,8 @@ export function TableDetailScreen() {
         );
       }
     },
-    [currentOrderId, handleRemoveItem, loadTableAndOrder, paymentLocked],
+    [currentOrderId, handleRemoveItem, paymentLocked],
   );
-
-  useEffect(() => {
-    (async () => {
-      await loadTableAndOrder();
-    })();
-  }, [loadTableAndOrder]);
 
   useFocusEffect(
     useCallback(() => {
@@ -413,7 +413,7 @@ export function TableDetailScreen() {
             <View style={styles.tableMetaCompactRow}>
               <StatusPill label={table.status} tone={statusToneForTable(table.status)} />
               <View style={styles.guestCompactWrap}>
-                <MetaText style={styles.guestCompactLabel}>{t('dining.partySize', 'Guests')}</MetaText>
+                <MetaText style={styles.guestCompactLabel}>{t('dining.partySize')}</MetaText>
                 <Pressable
                   onPress={() => {
                     setGuestPromptVisible((v) => !v);
@@ -503,7 +503,7 @@ export function TableDetailScreen() {
               </Pressable>
               {activeOrderExpanded && (
                 <>
-                  <MetaText>{t('dining.orderExpandedHint', 'Items and actions')}</MetaText>
+                  <MetaText>{t('dining.orderExpandedHint')}</MetaText>
                 </>
               )}
             </Card>
@@ -524,11 +524,11 @@ export function TableDetailScreen() {
                           : undefined;
                   const nextStatusLabel =
                     nextStatus === 'preparing'
-                      ? t('dining.preparingShort', 'prep')
+                      ? t('dining.preparingShort')
                       : nextStatus === 'ready'
-                        ? t('dining.readyShort', 'ready')
+                        ? t('dining.readyShort')
                         : nextStatus === 'served'
-                          ? t('dining.servedShort', 'served')
+                          ? t('dining.servedShort')
                           : null;
 
                   return (

@@ -34,7 +34,7 @@ export function ShellUserIdentityBar({ user, onPress, onSwap, swapDisabled = fal
       
       {onSwap && (
         <Button
-          title={t('header.userMenu.swap')}
+          title={t('header.userMenu.swapAccount')}
           onPress={onSwap}
           disabled={swapDisabled}
           variant="secondary"

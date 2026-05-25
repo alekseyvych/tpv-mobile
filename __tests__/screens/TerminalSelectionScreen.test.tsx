@@ -69,6 +69,7 @@ describe('TerminalSelectionScreen', () => {
 
     expect(useTerminalStore.getState().selectedTerminalId).toBe('t-1');
     expect(useTerminalStore.getState().operatingMode).toBe('RETAIL');
+    expect(useTerminalStore.getState().terminalName).toBe('Main POS');
   });
 
   it('routes RESTAURANT mode to DiningFloor', async () => {

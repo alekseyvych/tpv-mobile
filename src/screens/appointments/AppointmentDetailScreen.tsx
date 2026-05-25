@@ -34,8 +34,10 @@ function extractErrorMessage(error: unknown, fallback: string, permissionFallbac
   if (maybe?.status === 401 || maybe?.status === 403) {
     return permissionFallback;
   }
-  if (typeof maybe?.message === 'string' && maybe.message.length > 0) {
-    return maybe.message;
+  const responseStatus =
+    (error as { response?: { status?: number } } | undefined)?.response?.status;
+  if (responseStatus === 401 || responseStatus === 403) {
+    return permissionFallback;
   }
   return fallback;
 }

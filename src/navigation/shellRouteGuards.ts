@@ -1,3 +1,5 @@
+import { canAccessAuthRoute, hasRoleAtLeast } from '@/auth/access';
+
 export const NAVIGABLE_SHELL_ROUTES = [
   'Home',
   'Checkout',
@@ -61,4 +63,26 @@ export function isShellRouteEnabledForTerminal(
   }
 
   return true;
+}
+
+export function isShellRouteAccessible(
+  route: string,
+  hasSelectedTerminal: boolean,
+  operatingMode: string | null,
+  capabilities: TerminalCapabilityMap,
+  roles: string[],
+  permissions: string[],
+): boolean {
+  if (route === 'Checkout') {
+    return canAccessAuthRoute(route, roles, permissions);
+  }
+
+  if (route === 'DiningFloor' && hasRoleAtLeast(roles, 'ADMIN')) {
+    return canAccessAuthRoute(route, roles, permissions);
+  }
+
+  return (
+    isShellRouteEnabledForTerminal(route, hasSelectedTerminal, operatingMode, capabilities) &&
+    canAccessAuthRoute(route, roles, permissions)
+  );
 }

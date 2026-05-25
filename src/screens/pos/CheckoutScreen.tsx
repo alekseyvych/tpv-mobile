@@ -12,13 +12,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { LoadingState } from '@/components/LoadingState';
 import { ScreenContent, ScreenPage } from '@/components/ScreenLayout';
+import { StatusPill } from '@/components/StatusPill';
 import { Topbar } from '@/components/Topbar';
-import { BodyText, ErrorText, MetaText, TitleText } from '@/components/Typography';
+import { BodyText, MetaText, TitleText } from '@/components/Typography';
 import { theme } from '@/components/theme/theme';
 import { listCategories, listProducts, type CategoryDto, type ProductDto } from '@/api/catalog.api';
 import { useSaleFlow } from '@/hooks/useSaleFlow';
 import { useDeviceProfile } from '@/platform/useDeviceProfile';
+import { useOfflineDetection } from '@/utils/offline';
 
 type Props = {
   onOpenCart: () => void;
@@ -39,6 +44,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
   const { t, i18n } = useTranslation();
   const { total, addLine, lines } = useSaleFlow();
   const { isPhone } = useDeviceProfile();
+  const { isOnline } = useOfflineDetection();
   const insets = useSafeAreaInsets();
   const locale = i18n.language === 'es' ? 'es-ES' : 'en-US';
   const formatAmount = (value: number) =>
@@ -109,6 +115,7 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
         <Card style={styles.card}>
           <TitleText>{t('pos.checkoutTitle')}</TitleText>
           <BodyText style={styles.description}>{`${t('pos.totalLabel')}: ${total.toFixed(2)}`}</BodyText>
+          {!isOnline ? <StatusPill label={t('sync.offline')} tone="warning" /> : null}
 
           <TextInput
             style={styles.searchInput}
@@ -140,8 +147,22 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
             })}
           </ScrollView>
 
-          {loading ? <BodyText>{t('common.loading')}</BodyText> : null}
-          {error ? <ErrorText>{error}</ErrorText> : null}
+          {loading ? (
+            <LoadingState
+              title={t('common.loading')}
+              description={!isOnline ? t('home.sync.offlineDescription') : undefined}
+            />
+          ) : null}
+          {error ? (
+            <ErrorState
+              title={t('pos.errorTitle')}
+              description={error}
+              actionLabel={t('common.retry')}
+              onAction={() => {
+                void loadCatalog();
+              }}
+            />
+          ) : null}
 
           {!loading && !error ? (
             <FlatList
@@ -154,7 +175,12 @@ export function CheckoutScreen({ onOpenCart, onBack }: Props) {
                 styles.productListContent,
                 { paddingBottom: theme.spacing.s2 + insets.bottom },
               ]}
-              ListEmptyComponent={<BodyText>{t('pos.noProducts')}</BodyText>}
+              ListEmptyComponent={(
+                <EmptyState
+                  title={t('dining.searchNoResults')}
+                  description={t('pos.noProducts')}
+                />
+              )}
               renderItem={({ item }) => {
                 const quantity = quantitiesByProductId[item.id] ?? 0;
 

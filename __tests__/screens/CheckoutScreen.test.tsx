@@ -76,4 +76,29 @@ describe('CheckoutScreen', () => {
       expect(view.getByText(/Catalog could not be loaded|catálogo/i)).toBeTruthy();
     });
   });
+
+  it('retries catalog load after an error', async () => {
+    (listCategories as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce([{ id: 'c1', name: 'Coffee' }]);
+    (listProducts as jest.Mock)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValueOnce([{ id: 'p1', name: 'Latte', categoryId: 'c1', priceGross: 3.5 }]);
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <CheckoutScreen onBack={() => undefined} onOpenCart={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    await waitFor(() => {
+      expect(view.getByText(/Catalog could not be loaded|catálogo/i)).toBeTruthy();
+    });
+
+    fireEvent.press(view.getByText(/Retry|Reintentar/));
+
+    await waitFor(() => {
+      expect(view.getByText('Latte')).toBeTruthy();
+    });
+  });
 });

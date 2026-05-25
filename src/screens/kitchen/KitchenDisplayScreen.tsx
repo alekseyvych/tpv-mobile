@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Modal, Pressable, StyleSheet, View } from 'react-native';
 
@@ -32,6 +32,7 @@ export function KitchenDisplayScreen({ onBack, initialStation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [legendVisible, setLegendVisible] = useState(false);
+  const pollInFlightRef = useRef(false);
 
   function nextStatus(status: KitchenDisplayItem['status']): KitchenDisplayItem['status'] | null {
     if (status === 'pending') return 'preparing';
@@ -76,8 +77,12 @@ export function KitchenDisplayScreen({ onBack, initialStation }: Props) {
     void load();
 
     const refreshTimer = setInterval(() => {
-      void loadKitchenOrders();
-    }, 12_000);
+      if (pollInFlightRef.current) return;
+      pollInFlightRef.current = true;
+      void loadKitchenOrders().finally(() => {
+        pollInFlightRef.current = false;
+      });
+    }, 30_000);
 
     return () => {
       clearInterval(refreshTimer);

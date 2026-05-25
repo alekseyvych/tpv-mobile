@@ -25,12 +25,17 @@ interface TerminalStore {
   operatingMode: OperatingMode | null;
   capabilities: Record<string, unknown> | null;
   activeCashShiftId: string | null;
+  activeCashShiftCheckedAt: number | null;
+  terminalName: string | null;
   setSelectedTerminal: (
     terminalId: string,
     mode: OperatingMode,
-    capabilities: Record<string, unknown> | null
+    capabilities: Record<string, unknown> | null,
+    terminalName?: string | null,
   ) => void;
   setActiveCashShiftId: (shiftId: string | null) => void;
+  setActiveCashShiftCheckAt: (checkedAt: number | null) => void;
+  setTerminalName: (name: string | null) => void;
   clearSelected: () => void;
 }
 
@@ -41,15 +46,27 @@ export const useTerminalStore = create<TerminalStore>()(
       operatingMode: null,
       capabilities: null,
       activeCashShiftId: null,
-      setSelectedTerminal(terminalId, mode, capabilities) {
+      activeCashShiftCheckedAt: null,
+      terminalName: null,
+      setSelectedTerminal(terminalId, mode, capabilities, terminalName) {
         set({
           selectedTerminalId: terminalId,
           operatingMode: mode,
           capabilities,
+          terminalName: terminalName ?? null,
         });
       },
       setActiveCashShiftId(shiftId) {
-        set({ activeCashShiftId: shiftId });
+        set({
+          activeCashShiftId: shiftId,
+          activeCashShiftCheckedAt: shiftId ? Date.now() : null,
+        });
+      },
+      setActiveCashShiftCheckAt(checkedAt) {
+        set({ activeCashShiftCheckedAt: checkedAt });
+      },
+      setTerminalName(name) {
+        set({ terminalName: name });
       },
       clearSelected() {
         set({
@@ -57,6 +74,8 @@ export const useTerminalStore = create<TerminalStore>()(
           operatingMode: null,
           capabilities: null,
           activeCashShiftId: null,
+          activeCashShiftCheckedAt: null,
+          terminalName: null,
         });
       },
     }),

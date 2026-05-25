@@ -378,7 +378,7 @@ export function OrderCreationScreen() {
         }
       } else {
         if (!selectedTableId) {
-          throw new Error(t('dining.selectTableRequired', 'Table selection is required'));
+          throw new Error(t('dining.selectTableRequired'));
         }
         // Backend requires at least one item in CreateOrder, so create the order with this first item.
         const createdOrder = await restaurantApi.createOrder({
@@ -513,7 +513,7 @@ export function OrderCreationScreen() {
               setSelectedOrder(currentOrderId);
             } else {
               if (!selectedTableId) {
-                throw new Error(t('dining.selectTableRequired', 'Table selection is required'));
+                throw new Error(t('dining.selectTableRequired'));
               }
               if (!creatingOrderPromiseRef.current) {
                 creatingOrderPromiseRef.current = restaurantApi
@@ -646,7 +646,7 @@ export function OrderCreationScreen() {
                   selectedCategoryId === 'all' ? styles.filterChipTextActive : styles.filterChipText
                 }
               >
-                {t('dining.allCategories', 'All categories')}
+                {t('dining.allCategories')}
               </MetaText>
             </Pressable>
             {categories.map((category) => (
@@ -694,7 +694,7 @@ export function OrderCreationScreen() {
                     : styles.filterChipText
                 }
               >
-                {t('dining.allFilters', 'All filters')}
+                {t('dining.allFilters')}
               </MetaText>
             </Pressable>
 
@@ -715,7 +715,7 @@ export function OrderCreationScreen() {
                     selectedDietaryLabel === option ? styles.filterChipTextActive : styles.filterChipText
                   }
                 >
-                  {t(`catalog.dietaryOptions.${option}`, option.replace('_', ' '))}
+                  {t(`catalog.dietaryOptions.${option}`)}
                 </MetaText>
               </Pressable>
             ))}
@@ -740,7 +740,7 @@ export function OrderCreationScreen() {
                       : styles.filterChipText
                   }
                 >
-                  {t('dining.withoutAllergen', 'No {{value}}', { value: allergen })}
+                  {t('dining.withoutAllergen', { value: allergen })}
                 </MetaText>
               </Pressable>
             ))}
@@ -776,7 +776,7 @@ export function OrderCreationScreen() {
                   <MetaText style={styles.productPrice}>{formatAmount(item.unitPrice)}</MetaText>
                   {allergenNames.length > 0 && (
                     <MetaText style={styles.productAllergens}>
-                      {`${t('dining.allergens', 'Allergens')}: ${allergenNames.join(', ')}`}
+                      {`${t('dining.allergens')}: ${allergenNames.join(', ')}`}
                     </MetaText>
                   )}
                   <Pressable
@@ -850,7 +850,7 @@ export function OrderCreationScreen() {
                     onPress={togglePerUnitMode}
                   >
                     <MetaText style={perUnitMode ? styles.modeChipTextActive : styles.modeChipText}>
-                      {t('dining.perUnitMode', 'Configure each unit separately')}
+                      {t('dining.perUnitMode')}
                     </MetaText>
                   </Pressable>
                 )}
@@ -993,16 +993,16 @@ export function OrderCreationScreen() {
                       <BodyText style={styles.label}>{group.name}</BodyText>
                       <View style={styles.ruleTagsRow}>
                         {group.required && (
-                          <StatusPill label={t('restaurant.validation.required', 'Required')} tone="warning" />
+                          <StatusPill label={t('restaurant.validation.required')} tone="warning" />
                         )}
                         {group.multiple && (
-                          <StatusPill label={t('dining.multipleAllowed', 'Multiple')} tone="neutral" />
+                          <StatusPill label={t('dining.multipleAllowed')} tone="neutral" />
                         )}
                       </View>
                     </View>
                     {groupInvalid && (
                       <MetaText style={styles.requiredHintText}>
-                        {t('dining.mandatorySelection', 'This is mandatory. Select at least one option.')}
+                        {t('dining.mandatorySelection')}
                       </MetaText>
                     )}
                     <View style={styles.optionChipsWrap}>

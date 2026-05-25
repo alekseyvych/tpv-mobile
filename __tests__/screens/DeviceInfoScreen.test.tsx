@@ -68,4 +68,70 @@ describe('DeviceInfoScreen', () => {
     expect(view.queryByText(/Clear remote context|Limpiar contexto remoto/)).toBeNull();
     expect(view.getByText(/Manager or admin access is required|Se requiere acceso de manager o admin/)).toBeTruthy();
   });
+
+  it('sanitizes refresh errors from backend payloads', async () => {
+    mockSettings.refreshDeviceContext.mockRejectedValueOnce(new Error('internal-stack-trace'));
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <DeviceInfoScreen onBack={() => undefined} embedded />
+      </I18nextProvider>,
+    );
+
+    fireEvent.press(view.getByText(/Refresh context|Refrescar contexto/));
+
+    await waitFor(() => {
+      expect(view.getByText(/Could not refresh device context|No se pudo refrescar el contexto del dispositivo/)).toBeTruthy();
+    });
+    expect(view.queryByText(/internal-stack-trace/)).toBeNull();
+  });
+
+  it('shows permission error when save returns 403', async () => {
+    mockSettings.updateDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <DeviceInfoScreen onBack={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    fireEvent.changeText(view.getByPlaceholderText(/Installation ID|ID de instalación/), 'inst-2');
+    fireEvent.press(view.getByText(/Save context|Guardar contexto/));
+
+    await waitFor(() => {
+      expect(view.getByText(/You do not have permission to manage device context|No tienes permiso para gestionar el contexto del dispositivo/)).toBeTruthy();
+    });
+  });
+
+  it('shows permission error when refresh returns 403', async () => {
+    mockSettings.refreshDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <DeviceInfoScreen onBack={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    fireEvent.press(view.getByText(/Refresh context|Refrescar contexto/));
+
+    await waitFor(() => {
+      expect(view.getByText(/You do not have permission to manage device context|No tienes permiso para gestionar el contexto del dispositivo/)).toBeTruthy();
+    });
+  });
+
+  it('shows permission error when clear returns 403', async () => {
+    mockSettings.clearRemoteDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+
+    const view = render(
+      <I18nextProvider i18n={i18n}>
+        <DeviceInfoScreen onBack={() => undefined} />
+      </I18nextProvider>,
+    );
+
+    fireEvent.press(view.getByText(/Clear remote context|Limpiar contexto remoto/));
+
+    await waitFor(() => {
+      expect(view.getByText(/You do not have permission to manage device context|No tienes permiso para gestionar el contexto del dispositivo/)).toBeTruthy();
+    });
+  });
 });

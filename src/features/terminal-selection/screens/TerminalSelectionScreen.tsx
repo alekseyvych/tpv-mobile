@@ -28,20 +28,24 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { EmptyState } from '@/components/EmptyState';
+import { ErrorState } from '@/components/ErrorState';
+import { LoadingState } from '@/components/LoadingState';
 import { colors, theme } from '@/platform/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ScreenPage, ScreenContent } from '@/components/ScreenLayout';
+import { StatusPill } from '@/components/StatusPill';
 import { Topbar } from '@/components/Topbar';
 import { getTerminals, type Terminal, type OperatingMode } from '@/api/terminals.api';
 import { getActiveCashShift } from '@/api/cashShifts.api';
 import { useTerminalStore } from '@/store/terminal.store';
+import { useOfflineDetection } from '@/utils/offline';
 import { OpenShiftModal } from '../components/OpenShiftModal';
 
 
@@ -131,6 +135,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<any>>();
   const insets = useSafeAreaInsets();
+  const { isOnline } = useOfflineDetection();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
@@ -140,6 +145,24 @@ export function TerminalSelectionScreen(): React.ReactElement {
   const [showShiftModal, setShowShiftModal] = useState(false);
 
   const { setSelectedTerminal: storeTerminal, setActiveCashShiftId } = useTerminalStore();
+
+  function mapTerminalListError(err: unknown): 'permission' | 'load' {
+    const message = (err as { message?: string } | undefined)?.message ?? '';
+    const status =
+      (err as { status?: number } | undefined)?.status ??
+      (err as { response?: { status?: number } } | undefined)?.response?.status;
+
+    if (
+      status === 401 ||
+      status === 403 ||
+      message === 'terminals_permission_denied' ||
+      /permission|forbidden|unauthorized/i.test(message)
+    ) {
+      return 'permission';
+    }
+
+    return 'load';
+  }
 
   const resolveModeRoute = (terminal: Terminal): 'Checkout' | 'DiningFloor' => {
     if (terminal.operatingMode === 'RESTAURANT') {
@@ -164,15 +187,10 @@ export function TerminalSelectionScreen(): React.ReactElement {
         const data = await getTerminals(true); // Only active terminals
         setTerminals(data);
         if (data.length === 0) {
-          setError('terminals_empty');
+          setError('empty');
         }
-      } catch (err: unknown) {
-        const error = err as any;
-        if (error?.message === 'terminals_permission_denied') {
-          setError('terminals_permission_denied');
-        } else {
-          setError('terminals_load_error');
-        }
+      } catch (err) {
+        setError(mapTerminalListError(err));
         setTerminals([]);
       } finally {
         setLoading(false);
@@ -187,6 +205,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
       terminal.id,
       terminal.operatingMode as OperatingMode,
       terminal.capabilities ?? null,
+      terminal.name || terminal.terminalId || terminal.id,
     );
     setActiveCashShiftId(cashShiftId);
     navigation.replace(resolveModeRoute(terminal));
@@ -207,7 +226,7 @@ export function TerminalSelectionScreen(): React.ReactElement {
       }
     } catch (err) {
       console.error('Error selecting terminal:', err);
-      setError('terminals_selection_error');
+      setError('load');
       setSelectedTerminal(null);
     } finally {
       setIsSelecting(false);
@@ -236,11 +255,10 @@ export function TerminalSelectionScreen(): React.ReactElement {
       const data = await getTerminals(true);
       setTerminals(data);
       if (data.length === 0) {
-        setError('terminals_empty');
+        setError('empty');
       }
-    } catch (err: unknown) {
-      const error = err as any;
-      setError(error?.message === 'terminals_permission_denied' ? 'terminals_permission_denied' : 'terminals_load_error');
+    } catch (err) {
+      setError(mapTerminalListError(err));
     } finally {
       setLoading(false);
     }
@@ -264,44 +282,50 @@ export function TerminalSelectionScreen(): React.ReactElement {
             <Text style={styles.subtitle}>
               {t('terminal.selection.subtitle')}
             </Text>
+            {!isOnline ? <StatusPill label={t('sync.offline')} tone="warning" /> : null}
           </View>
 
           {loading && (
             <View style={styles.centerContainer}>
-              <ActivityIndicator size="large" color={colors.accentAction} />
-              <Text style={styles.loadingText}>
-                {t('terminal.selection.loading')}
-              </Text>
+              <LoadingState
+                title={t('terminal.selection.loading')}
+                description={!isOnline ? t('home.sync.offlineDescription') : undefined}
+              />
             </View>
           )}
 
           {error && (
             <View style={styles.errorContainer}>
-              <Text style={styles.errorTitle}>
-                {error === 'terminals_permission_denied'
-                  ? t('terminal.selection.permissionDenied')
-                  : error === 'terminals_empty'
-                    ? t('terminal.selection.empty')
-                    : t('terminal.selection.error')}
-              </Text>
-              <Text style={styles.errorMessage}>
-                {error === 'terminals_permission_denied'
-                  ? t('terminal.selection.permissionDeniedMsg')
-                  : error === 'terminals_empty'
-                    ? t('terminal.selection.emptyMsg')
-                    : t('terminal.selection.errorMsg')}
-              </Text>
-              {error !== 'terminals_permission_denied' && (
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => {
+              {error === 'empty' ? (
+                <EmptyState
+                  title={t('terminal.selection.empty')}
+                  description={t('terminal.selection.emptyMsg')}
+                  actionLabel={t('common.retry')}
+                  onAction={() => {
                     void retryLoad();
                   }}
-                >
-                  <Text style={styles.retryButtonText}>
-                    {t('terminal.selection.retry')}
-                  </Text>
-                </TouchableOpacity>
+                />
+              ) : (
+                <ErrorState
+                  title={
+                    error === 'permission'
+                      ? t('terminal.selection.permissionDenied')
+                      : t('terminal.selection.error')
+                  }
+                  description={
+                    error === 'permission'
+                      ? t('terminal.selection.permissionDeniedMsg')
+                      : t('terminal.selection.errorMsg')
+                  }
+                  actionLabel={error === 'permission' ? undefined : t('common.retry')}
+                  onAction={
+                    error === 'permission'
+                      ? undefined
+                      : () => {
+                          void retryLoad();
+                        }
+                  }
+                />
               )}
             </View>
           )}
@@ -355,41 +379,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minHeight: 300,
   },
-  loadingText: {
-    marginTop: theme.spacing.lg,
-    fontSize: theme.typography.fontSize.base,
-    color: colors.textSecondary,
-  },
   errorContainer: {
-    backgroundColor: colors.bgPanel,
-    borderRadius: theme.radius.lg,
-    padding: theme.spacing.lg,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.error,
-    marginBottom: theme.spacing.lg,
-  },
-  errorTitle: {
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: theme.typography.fontWeight.semibold,
-    color: colors.error,
-    marginBottom: theme.spacing.sm,
-  },
-  errorMessage: {
-    fontSize: theme.typography.fontSize.sm,
-    color: colors.textSecondary,
-    marginBottom: theme.spacing.md,
-    lineHeight: 1.5,
-  },
-  retryButton: {
-    backgroundColor: colors.error,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+    backgroundColor: colors.bgPage,
     borderRadius: theme.radius.md,
-    alignItems: 'center',
-  },
-  retryButtonText: {
-    color: colors.textInverse,
-    fontWeight: theme.typography.fontWeight.semibold,
+    marginBottom: theme.spacing.lg,
   },
   terminalCard: {
     backgroundColor: colors.bgPanel,

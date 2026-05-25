@@ -12,6 +12,14 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(async () => undefined),
 }));
 
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: {
+    fetch: jest.fn(async () => ({ isConnected: true, isInternetReachable: true })),
+    addEventListener: jest.fn(() => jest.fn()),
+  },
+}));
+
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');
   const { View } = require('react-native');

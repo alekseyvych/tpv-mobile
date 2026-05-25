@@ -1,4 +1,24 @@
-import {
+import { isShellRouteAccessible } from '@/navigation/shellRouteGuards';
+
+describe('isShellRouteAccessible', () => {
+  it('blocks kitchen route when auth policy denies access even if terminal allows it', () => {
+    expect(
+      isShellRouteAccessible('KitchenDisplay', true, 'POS', null, ['WAITER'], []),
+    ).toBe(false);
+  });
+
+  it('allows appointments route when auth policy grants access and shell allows it', () => {
+    expect(
+      isShellRouteAccessible('AppointmentsList', true, 'POS', null, ['MANAGER'], []),
+    ).toBe(true);
+  });
+
+  it('still blocks dining route when terminal mode disables it', () => {
+    expect(
+      isShellRouteAccessible('DiningFloor', true, 'POS', null, ['MANAGER'], ['RESTAURANT_ORDER_READ']),
+    ).toBe(false);
+  });
+});import {
   isShellRouteEnabledForTerminal,
   resolveShellRoute,
   usesDiningFloorNavigation,

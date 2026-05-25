@@ -185,6 +185,39 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
     }
   }, []);
 
+  const finalizeClosedOrder = useCallback(async (saleId: string) => {
+    if (selectedTerminalId) {
+      try {
+        await restaurantApi.releaseOrderPaymentLock(orderId, selectedTerminalId);
+      } catch (err) {
+        logError('[RestaurantCheckout] Failed to release payment lock after checkout completion', {
+          rawError: err,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          orderId,
+          saleId,
+          selectedTerminalId,
+        });
+      }
+    }
+
+    clearResumeContext();
+    setCompletedSaleId(saleId);
+
+    try {
+      await loadReceipt(saleId);
+      await loadContext(false);
+    } catch (err) {
+      logError('[RestaurantCheckout] Failed to refresh checkout context after completion', {
+        rawError: err,
+        errorMessage: err instanceof Error ? err.message : String(err),
+        orderId,
+        saleId,
+      });
+    } finally {
+      onSuccess?.();
+    }
+  }, [clearResumeContext, loadContext, loadReceipt, onSuccess, orderId, selectedTerminalId]);
+
   const handleCancel = useCallback(async () => {
     if (completedSaleId) {
       (onSuccess ?? onBack)();
@@ -431,18 +464,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
         setMethod('CASH');
 
         if (settled.orderClosed) {
-          if (selectedTerminalId) {
-            try {
-              await restaurantApi.releaseOrderPaymentLock(orderId, selectedTerminalId);
-            } catch {
-              // Best effort lock release on checkout completion.
-            }
-          }
-          clearResumeContext();
-          setCompletedSaleId(saleId);
-          await loadReceipt(saleId);
-          await loadContext(false);
-          onSuccess?.();
+          await finalizeClosedOrder(saleId);
           return;
         }
 
@@ -477,13 +499,11 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       method,
       selectedOrderItemIds,
       orderId,
-      onSuccess,
       selectedTerminalId,
       ensureCardTerminalProfileConfigured,
       t,
-      loadReceipt,
       loadContext,
-      clearResumeContext
+      finalizeClosedOrder,
     ]
   );
 
@@ -547,18 +567,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       setMixedCashAmount('');
       setMethod('CASH');
       if (settled.orderClosed) {
-        if (selectedTerminalId) {
-          try {
-            await restaurantApi.releaseOrderPaymentLock(orderId, selectedTerminalId);
-          } catch {
-            // Best effort
-          }
-        }
-        clearResumeContext();
-        setCompletedSaleId(pending.saleId);
-        await loadReceipt(pending.saleId);
-        await loadContext(false);
-        onSuccess?.();
+        await finalizeClosedOrder(pending.saleId);
         return;
       }
         await loadContext(false);
@@ -582,7 +591,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       setDevSimProcessing(false);
       setProcessing(false);
     }
-  }, [devSimPending, devSimOutcome, devSimDelayMs, orderId, onSuccess, selectedTerminalId, t, loadReceipt, loadContext, clearResumeContext]);
+  }, [devSimPending, devSimOutcome, devSimDelayMs, orderId, t, loadContext, finalizeClosedOrder]);
 
   const handleDevSimCancel = useCallback(() => {
     setDevSimPending(null);
@@ -626,7 +635,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
                   {`${selectedItems.length} ${t('dining.items')}`}
                 </BodyText>
                 <BodyText style={styles.totalText}>
-                  {`${t('pos.paymentLabel', 'Payment')}: ${formatAmount(selectedTotal)}`}
+                  {`${t('pos.paymentLabel')}: ${formatAmount(selectedTotal)}`}
                 </BodyText>
               </Card>
 
@@ -715,7 +724,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
                         placeholder={t('pos.enterCashAmount')}
                       />
                       {cashChange > 0 ? (
-                        <BodyText style={styles.changeText}>{`${t('pos.changeLabel', 'Change')}: ${formatAmount(cashChange)}`}</BodyText>
+                        <BodyText style={styles.changeText}>{`${t('pos.changeLabel')}: ${formatAmount(cashChange)}`}</BodyText>
                       ) : null}
                     </View>
                   ) : null}

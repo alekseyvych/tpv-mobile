@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/hooks/useAuth';
 import { useDeviceProfile } from '@/platform/useDeviceProfile';
+import { clearLockout, getLockoutState, recordFailedAttempt } from '@/utils/pin-lockout';
 import type { QuickAccessProfileDto } from '@/types/api';
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -42,6 +43,32 @@ export function QuickAccessAuthModal({
   const [error, setError] = useState<string | null>(null);
   const [setupRequired, setSetupRequired] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState(0);
+
+  // Decrement lockout countdown every second.
+  const lockoutIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  useEffect(() => {
+    if (lockoutSeconds <= 0) {
+      if (lockoutIntervalRef.current) {
+        clearInterval(lockoutIntervalRef.current);
+        lockoutIntervalRef.current = null;
+      }
+      return;
+    }
+    lockoutIntervalRef.current = setInterval(() => {
+      setLockoutSeconds((prev) => {
+        if (prev <= 1) {
+          if (lockoutIntervalRef.current) clearInterval(lockoutIntervalRef.current);
+          setError(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => {
+      if (lockoutIntervalRef.current) clearInterval(lockoutIntervalRef.current);
+    };
+  }, [lockoutSeconds]);
 
   const selectedProfile = useMemo(
     () => profiles.find((profile) => profile.id === selectedUserId) ?? null,
@@ -53,6 +80,7 @@ export function QuickAccessAuthModal({
     setPin('');
     setSelectedUserId(null);
     setError(null);
+    setLockoutSeconds(0);
     onClose();
   }
 
@@ -60,6 +88,7 @@ export function QuickAccessAuthModal({
     setPinModalOpen(false);
     setPin('');
     setError(null);
+    setLockoutSeconds(0);
   }
 
   useEffect(() => {
@@ -92,14 +121,33 @@ export function QuickAccessAuthModal({
       return;
     }
 
+    // Check lockout before attempting auth.
+    const lockout = await getLockoutState(selectedUserId);
+    if (lockout.isLocked) {
+      setLockoutSeconds(lockout.remainingSeconds);
+      setError(t('auth.pinLocked', { seconds: lockout.remainingSeconds }));
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
     try {
       await onAuthenticated(selectedUserId, pin);
+      await clearLockout(selectedUserId);
       // Don't call handleClose here - let parent component handle navigation
       // and modal will close via the visible prop
     } catch {
-      setError(t('auth.invalidPin'));
+      const state = await recordFailedAttempt(selectedUserId);
+      if (state.isLocked) {
+        setLockoutSeconds(state.remainingSeconds);
+        setError(t('auth.pinLocked', { seconds: state.remainingSeconds }));
+      } else {
+        setError(
+          state.attemptsLeft > 0
+            ? t('auth.invalidPinAttemptsLeft', { count: state.attemptsLeft })
+            : t('auth.invalidPin'),
+        );
+      }
     } finally {
       setSubmitting(false);
     }
@@ -196,7 +244,7 @@ export function QuickAccessAuthModal({
                 <Button
                   title={submitLabel}
                   onPress={() => void handleSubmit()}
-                  disabled={submitting || loadingProfiles || setupRequired || !selectedUserId}
+                  disabled={submitting || loadingProfiles || setupRequired || !selectedUserId || lockoutSeconds > 0}
                 />
               </View>
             </View>

@@ -23,6 +23,7 @@ import { restaurantApi } from '@/api/restaurant.api';
 import { getTerminals, type Terminal } from '@/api/terminals.api';
 import type { ZoneLayoutConfig } from '@/api/restaurant.api';
 import { OpenShiftModal } from '@/features/terminal-selection/components/OpenShiftModal';
+import { hasFreshActiveShiftCache } from '@/screens/dining/shiftCache';
 import { useTerminalStore } from '@/store/terminal.store';
 
 // Match Windows tableMapLayout.ts constants exactly
@@ -164,7 +165,9 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const setSelectedTerminal = useTerminalStore((s) => s.setSelectedTerminal);
   const setActiveCashShiftId = useTerminalStore((s) => s.setActiveCashShiftId);
-  const [loading, setLoading] = useState(false);
+  const activeCashShiftId = useTerminalStore((s) => s.activeCashShiftId);
+  const activeCashShiftCheckedAt = useTerminalStore((s) => s.activeCashShiftCheckedAt);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [zoneLayouts, setZoneLayouts] = useState<Record<string, ZoneLayoutConfig>>({});
@@ -394,6 +397,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
       terminal.id,
       terminal.operatingMode,
       terminal.capabilities ?? null,
+      terminal.name || terminal.terminalId || terminal.id,
     );
     setActiveCashShiftId(cashShiftId);
 
@@ -410,6 +414,11 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
 
     try {
       if (selectedTerminalId) {
+        if (hasFreshActiveShiftCache(activeCashShiftId, activeCashShiftCheckedAt)) {
+          setPendingOpenTableId(null);
+          handleOpenTableDirect(tableId);
+          return;
+        }
         const activeShift = await getActiveCashShift(selectedTerminalId);
         if (activeShift?.id) {
           setActiveCashShiftId(activeShift.id);
@@ -437,7 +446,14 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
     } finally {
       setTerminalPickerLoading(false);
     }
-  }, [handleOpenTableDirect, selectedTerminalId, setActiveCashShiftId, t]);
+  }, [
+    handleOpenTableDirect,
+    selectedTerminalId,
+    activeCashShiftId,
+    activeCashShiftCheckedAt,
+    setActiveCashShiftId,
+    t,
+  ]);
 
   const handleOpenTable = useCallback((tableId: string) => {
     void ensureTerminalAndShiftThenOpenTable(tableId);
@@ -471,9 +487,9 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
 
   const getCapacityKind = useCallback((status: string): string => {
     if (status === 'occupied' || status === 'reserved') {
-      return t('dining.guests', 'Guests');
+      return t('dining.guests');
     }
-    return t('dining.seats', 'Seats');
+    return t('dining.seats');
   }, [t]);
 
   const toggleJoinSelection = useCallback((tableId: string) => {
@@ -641,9 +657,11 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
     [panGesture, pinchGesture, tapGesture],
   );
 
-  const reloadDiningData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const reloadDiningData = useCallback(async (options?: { showLoading?: boolean }) => {
+    if (options?.showLoading !== false) {
+      setLoading(true);
+      setError(null);
+    }
     try {
       const [, layouts] = await Promise.all([
         loadTables(),
@@ -662,14 +680,51 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
   }, [loadTables, t]);
 
   useEffect(() => {
-    void reloadDiningData();
-  }, [reloadDiningData]);
+    let active = true;
+
+    async function loadInitialDiningData() {
+      try {
+        const [, layouts] = await Promise.all([
+          loadTables(),
+          restaurantApi.getZoneLayouts(),
+        ]);
+        if (!active) {
+          return;
+        }
+
+        const layoutMap: Record<string, ZoneLayoutConfig> = {};
+        for (const layout of layouts) {
+          layoutMap[layout.zone] = layout;
+        }
+        setZoneLayouts(layoutMap);
+      } catch {
+        if (!active) {
+          return;
+        }
+        setError(t('dining.loadError') || 'Failed to load tables');
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void loadInitialDiningData();
+
+    return () => {
+      active = false;
+    };
+  }, [loadTables, t]);
 
   useFocusEffect(
     useCallback(() => {
-      void reloadDiningData();
+      // Only reload tables on focus; zone layouts are static during a session
+      // and are already fetched by the initial useEffect below.
+      void loadTables().catch(() => {
+        setError(t('dining.loadError') || 'Failed to load tables');
+      });
       return undefined;
-    }, [reloadDiningData]),
+    }, [loadTables, t]),
   );
 
   return (
@@ -701,7 +756,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 onPress={() => setViewMode('list')}
               >
                 <MetaText style={viewMode === 'list' ? styles.viewTabTextActive : undefined}>
-                  {t('dining.viewList', 'List')}
+                  {t('dining.viewList')}
                 </MetaText>
               </Pressable>
               <Pressable
@@ -709,7 +764,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 onPress={() => setViewMode('grid')}
               >
                 <MetaText style={viewMode === 'grid' ? styles.viewTabTextActive : undefined}>
-                  {t('dining.viewMap', 'Map')}
+                  {t('dining.viewMap')}
                 </MetaText>
               </Pressable>
             </View>
@@ -776,7 +831,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 disabled={actionLoading}
               >
                 <RNText style={joinMode ? styles.joinActionTextActive : styles.joinActionText}>
-                  {joinMode ? t('dining.cancelJoin', 'Cancel') : t('dining.joinTables', 'Join Tables')}
+                  {joinMode ? t('dining.cancelJoin') : t('dining.joinTables')}
                 </RNText>
               </Pressable>
               <Pressable
@@ -789,7 +844,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 disabled={actionLoading}
               >
                 <RNText style={splitMode ? styles.joinActionTextActive : styles.joinActionText}>
-                  {splitMode ? t('dining.cancelSplit', 'Cancel') : t('dining.splitGroup', 'Split Group')}
+                  {splitMode ? t('dining.cancelSplit') : t('dining.splitGroup')}
                 </RNText>
               </Pressable>
             </View>
@@ -941,7 +996,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                           <Text
                             x={table.x + 8}
                             y={table.y + 18}
-                            text={t('dining.table', 'Table').toUpperCase()}
+                            text={t('dining.table').toUpperCase()}
                             font={tableTagFont}
                             color={colors.text}
                           />
@@ -979,7 +1034,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                               <Text
                                 x={table.x + 68}
                                 y={table.y + 18}
-                                text={t('dining.joined', 'JOINED')}
+                                text={t('dining.joined')}
                                 font={joinedBadgeFont}
                                 color="#ffffff"
                               />
@@ -1005,7 +1060,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                               { backgroundColor: colors.bg, borderColor: colors.border },
                             ]}
                           />
-                          <RNText style={styles.legendTextCompact}>{status}</RNText>
+                          <RNText style={styles.legendTextCompact}>{t(`dining.legendStatus.${status}`)}</RNText>
                         </View>
                       );
                     })}
@@ -1013,7 +1068,7 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                 </View>
               )}
               <Pressable style={styles.legendToggleBtn} onPress={() => setLegendVisible((v) => !v)}>
-                <RNText style={styles.legendToggleText}>{legendVisible ? 'Hide legend' : 'Legend'}</RNText>
+                <RNText style={styles.legendToggleText}>{legendVisible ? t('dining.hideLegend') : t('dining.showLegend')}</RNText>
               </Pressable>
             </View>
 
@@ -1022,8 +1077,8 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
               <View style={styles.joinBar}>
                 <RNText style={styles.joinBarHint}>
                   {joinSelection.length < 2
-                    ? t('dining.joinSelectHint', 'Select tables to join (tap each)')
-                    : t('dining.joinReadyHint', '{{count}} tables selected', { count: joinSelection.length })}
+                    ? t('dining.joinSelectHint')
+                    : t('dining.joinReadyHint', { count: joinSelection.length })}
                 </RNText>
                 <View style={styles.joinBarActions}>
                   <Pressable
@@ -1031,13 +1086,13 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
                     onPress={() => void handleConfirmJoin()}
                     disabled={joinSelection.length < 2 || actionLoading}
                   >
-                    <RNText style={styles.joinBarBtnText}>{t('dining.confirmJoin', 'Confirm Join')}</RNText>
+                    <RNText style={styles.joinBarBtnText}>{t('dining.confirmJoin')}</RNText>
                   </Pressable>
                   <Pressable
                     style={styles.joinBarBtnSecondary}
                     onPress={() => { setJoinMode(false); setJoinSelection([]); }}
                   >
-                    <RNText style={styles.joinBarBtnSecondaryText}>{t('common.cancel', 'Cancel')}</RNText>
+                    <RNText style={styles.joinBarBtnSecondaryText}>{t('common.cancel')}</RNText>
                   </Pressable>
                 </View>
               </View>
@@ -1047,13 +1102,13 @@ export function DiningFloorScreen({ onOpenTable: _onOpenTable }: Props) {
             {splitMode && (
               <View style={styles.joinBar}>
                 <RNText style={styles.joinBarHint}>
-                  {t('dining.splitSelectHint', 'Tap a joined table to split its group')}
+                  {t('dining.splitSelectHint')}
                 </RNText>
                 <Pressable
                   style={styles.joinBarBtnSecondary}
                   onPress={() => setSplitMode(false)}
                 >
-                  <RNText style={styles.joinBarBtnSecondaryText}>{t('common.cancel', 'Cancel')}</RNText>
+                  <RNText style={styles.joinBarBtnSecondaryText}>{t('common.cancel')}</RNText>
                 </Pressable>
               </View>
             )}

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import {
   getKitchenOrders,
@@ -49,41 +49,63 @@ export function useKitchenOrders() {
   const [items, setItems] = useState<KitchenDisplayItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [station, setStation] = useState<KitchenPrepStation>('kitchen');
+  const inFlightRef = useRef<Promise<KitchenDisplayItem[]> | null>(null);
+  const inFlightStationRef = useRef<KitchenPrepStation | null>(null);
+  const requestIdRef = useRef(0);
 
   const loadKitchenOrders = useCallback(async (requestedStation?: KitchenPrepStation) => {
     const stationToLoad = requestedStation ?? station;
-    setLoading(true);
-    try {
-      const response = await getKitchenOrders(stationToLoad);
-      const now = Date.now();
-      const next = response.data
-        .flatMap((order) =>
-          order.items.map((item) => ({
-            id: item.id,
-            orderId: order.id,
-            tableNumber: normalizeTableLabel(order.tableNumber, order.tableId),
-            productName: item.productName,
-            quantity: item.quantity,
-            status: normalizeKitchenItemStatus(item.status),
-            notes: item.notes,
-            createdAt: item.createdAt,
-            startedAt: item.startedAt ?? null,
-            preparedAt: item.preparedAt ?? null,
-            servedAt: item.servedAt ?? null,
-            acknowledgedAt: item.acknowledgedAt ?? null,
-            elapsedMinutes: Math.max(
-              0,
-              Math.floor((now - new Date(item.createdAt).getTime()) / 60000)
-            ),
-          }))
-        )
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-
-      setItems(next);
-      return next;
-    } finally {
-      setLoading(false);
+    if (inFlightRef.current && inFlightStationRef.current === stationToLoad) {
+      return inFlightRef.current;
     }
+
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    const requestPromise = (async () => {
+      try {
+        const response = await getKitchenOrders(stationToLoad);
+        const now = Date.now();
+        const next = response.data
+          .flatMap((order) =>
+            order.items.map((item) => ({
+              id: item.id,
+              orderId: order.id,
+              tableNumber: normalizeTableLabel(order.tableNumber, order.tableId),
+              productName: item.productName,
+              quantity: item.quantity,
+              status: normalizeKitchenItemStatus(item.status),
+              notes: item.notes,
+              createdAt: item.createdAt,
+              startedAt: item.startedAt ?? null,
+              preparedAt: item.preparedAt ?? null,
+              servedAt: item.servedAt ?? null,
+              acknowledgedAt: item.acknowledgedAt ?? null,
+              elapsedMinutes: Math.max(
+                0,
+                Math.floor((now - new Date(item.createdAt).getTime()) / 60000)
+              ),
+            }))
+          )
+          .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+        if (requestId === requestIdRef.current) {
+          setItems(next);
+        }
+        return next;
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
+        if (inFlightStationRef.current === stationToLoad) {
+          inFlightRef.current = null;
+          inFlightStationRef.current = null;
+        }
+      }
+    })();
+
+    inFlightRef.current = requestPromise;
+    inFlightStationRef.current = stationToLoad;
+    return requestPromise;
   }, [station]);
 
   const changeStation = useCallback(async (nextStation: KitchenPrepStation) => {

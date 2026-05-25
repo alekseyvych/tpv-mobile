@@ -160,7 +160,8 @@ describe('OrderCreationScreen', () => {
       );
       expect(restaurantApi.addOrderItem).not.toHaveBeenCalled();
       expect(mockRestaurantState.updateTable).toHaveBeenCalledWith('table-1', {
-        currentOrderId: 'order-new'
+        currentOrderId: 'order-new',
+        status: 'occupied',
       });
       expect(mockRestaurantState.setSelectedOrder).toHaveBeenCalledWith('order-new');
     });

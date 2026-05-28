@@ -43,7 +43,7 @@ function isQueueCandidate(error: AxiosError, config?: RetriableConfig): boolean 
     return false;
   }
 
-  if (url.includes('/observability/mobile-logs')) {
+  if (url.includes('/observability/log-batches')) {
     return false;
   }
 

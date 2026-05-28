@@ -1,4 +1,5 @@
 const mockAxiosPost = jest.fn();
+const mockAxiosGet = jest.fn();
 const mockGetMobileLogQueue = jest.fn();
 const mockSetMobileLogQueue = jest.fn();
 let storedMobileQueue: unknown[] = [];
@@ -8,6 +9,7 @@ jest.mock('axios', () => ({
   __esModule: true,
   default: {
     post: (...args: unknown[]) => mockAxiosPost(...args),
+    get: (...args: unknown[]) => mockAxiosGet(...args),
   },
 }));
 
@@ -71,6 +73,7 @@ describe('MobileLogTransportService', () => {
       storedMobileQueue = Array.isArray(value) ? value : [];
     });
     mockAxiosPost.mockResolvedValue({ status: 201 });
+    mockAxiosGet.mockResolvedValue({ status: 200, data: { status: 'healthy' } });
   });
 
   afterEach(() => {
@@ -91,11 +94,15 @@ describe('MobileLogTransportService', () => {
       },
     });
 
+    await Promise.resolve();
+    await mobileLogTransportService.flushNow();
+    await Promise.resolve();
     await mobileLogTransportService.flushNow();
 
     expect(mockAxiosPost).toHaveBeenCalledWith(
-      'https://example.test/observability/mobile-logs',
+      'https://example.test/observability/log-batches',
       expect.objectContaining({
+        source: 'mobile',
         deviceId: 'device-1',
         logs: expect.arrayContaining([
           expect.objectContaining({
@@ -128,7 +135,7 @@ describe('MobileLogTransportService', () => {
     expect(mockAxiosPost).not.toHaveBeenCalled();
   });
 
-  it('applies exponential backoff progression on repeated send failures', async () => {
+  it('applies tiered retry backoff progression on repeated send failures', async () => {
     jest.useFakeTimers();
     jest.setSystemTime(new Date('2026-05-26T12:00:00.000Z'));
     mockAxiosPost.mockRejectedValue(new Error('network-down'));
@@ -143,7 +150,10 @@ describe('MobileLogTransportService', () => {
       message: 'initial failure',
     });
 
-    await Promise.resolve();
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      await Promise.resolve();
+      await mobileLogTransportService.flushNow();
+    }
 
     const firstRetryCount = (storedMobileQueue[0] as Record<string, unknown>).retryCount as number;
     const firstNextRetryAt = (storedMobileQueue[0] as Record<string, unknown>).nextRetryAt as number;
@@ -168,7 +178,7 @@ describe('MobileLogTransportService', () => {
     }
 
     expect(secondRetryCount).toBeGreaterThanOrEqual(firstRetryCount + 1);
-    expect(secondNextRetryAt).toBeGreaterThan(Date.now());
+    expect(secondNextRetryAt).toBeGreaterThan(Date.now() + 60_000);
   });
 
   it('keeps queue bounded and drops oldest entries on overflow', async () => {
@@ -210,9 +220,33 @@ describe('MobileLogTransportService', () => {
 
     await mobileLogTransportService.flushNow();
     expect(mockAxiosPost).toHaveBeenCalledWith(
-      'https://example.test/observability/mobile-logs',
+      'https://example.test/observability/log-batches',
       expect.any(Object),
       expect.any(Object),
     );
+  });
+
+  it('does not flush log batch when observability health probe fails', async () => {
+    mockAxiosGet.mockRejectedValue(new Error('backend-offline'));
+
+    const { mobileLogTransportService } = require('@/services/MobileLogTransportService');
+
+    await mobileLogTransportService.enqueue({
+      timestamp: new Date().toISOString(),
+      level: 'warn',
+      component: 'sync',
+      eventName: 'sync.healthBlocked',
+      message: 'wait for backend health',
+    });
+
+    await mobileLogTransportService.flushNow();
+
+    expect(mockAxiosGet).toHaveBeenCalledWith(
+      'https://example.test/observability/health',
+      expect.objectContaining({
+        timeout: 3000,
+      }),
+    );
+    expect(mockAxiosPost).not.toHaveBeenCalled();
   });
 });

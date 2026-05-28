@@ -11,6 +11,7 @@ export type AuthUser = {
 
 export type LocalInstallationContext = {
   id?: string;
+  deviceId?: string;
   tenantId: string;
   installationId: string;
   deviceName?: string;

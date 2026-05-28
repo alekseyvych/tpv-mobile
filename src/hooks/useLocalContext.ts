@@ -13,10 +13,14 @@ import {
 /**
  * Convert API DTO to store type
  */
-function dtoToStore(dto: LocalInstallationContextDto | null): LocalInstallationContext | null {
+function dtoToStore(
+  dto: LocalInstallationContextDto | null,
+  fallbackDeviceId?: string,
+): LocalInstallationContext | null {
   if (!dto) return null;
   return {
     id: dto.id,
+    deviceId: fallbackDeviceId,
     tenantId: dto.tenantId,
     installationId: dto.installationId ?? dto.id,
     deviceName: dto.deviceName,
@@ -38,7 +42,7 @@ export function useLocalContext() {
 
     try {
       const remote = await getLocalInstallationContext();
-      const converted = dtoToStore(remote);
+      const converted = dtoToStore(remote, localContext?.deviceId);
       if (converted) {
         await setLocalContext(converted);
         setStoreContext(converted);
@@ -47,13 +51,13 @@ export function useLocalContext() {
     } catch {
       return null;
     }
-  }, [setStoreContext]);
+  }, [localContext?.deviceId, setStoreContext]);
 
   const connectContext = useCallback(
     async (input: Partial<LocalInstallationContextDto>): Promise<LocalInstallationContext | null> => {
       try {
         const remote = await upsertLocalInstallationContext(input);
-        const converted = dtoToStore(remote);
+        const converted = dtoToStore(remote, localContext?.deviceId);
         if (converted) {
           await setLocalContext(converted);
           setStoreContext(converted);
@@ -64,7 +68,7 @@ export function useLocalContext() {
         return null;
       }
     },
-    [setStoreContext]
+    [localContext?.deviceId, setStoreContext]
   );
 
   const clearContext = useCallback(async (options?: { clearRemote?: boolean }): Promise<void> => {

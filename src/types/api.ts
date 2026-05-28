@@ -9,6 +9,29 @@ export type ApiError = {
   details?: Record<string, unknown>;
 };
 
+export type RuntimeCompatibilityResponse = {
+  status: string;
+  code: string;
+  message: string;
+  updateRequired: boolean;
+  updateRecommended: boolean;
+  platformVersion: string;
+  backendVersion: string;
+  minimumMobileVersion: string;
+  supportedMobileVersionRange: string;
+  minimumRuntimeVersion: string;
+  logSchemaVersion: string;
+  metricsSchemaVersion: string;
+  checkedAt: string;
+  client?: {
+    appVersion?: string;
+    buildNumber?: string;
+    runtimeVersion?: string;
+    platform?: string;
+    deviceId?: string;
+  };
+};
+
 /**
  * ==================== AUTHENTICATION CONTRACTS ====================
  */

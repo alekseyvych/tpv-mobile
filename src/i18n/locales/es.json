@@ -593,6 +593,12 @@
     "errorLongPositive": "La inactividad larga debe ser mayor que cero",
     "errorLongMustExceedShort": "La inactividad larga debe superar a la corta"
   },
+  "compatibility": {
+    "requiredTitle": "Actualizacion requerida para continuar",
+    "requiredDescription": "Esta app movil no es compatible con el backend local. Actualiza la app o el backend y vuelve a intentarlo.",
+    "recommendedDescription": "Hay una version mas reciente de la app movil. Puedes continuar, pero se recomienda actualizar.",
+    "unreachableDescription": "No se pudo verificar la compatibilidad. Comprueba la conectividad con el backend local y reintenta."
+  },
   "home": {
     "session": {
       "title": "Sesión actual",

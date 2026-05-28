@@ -4,11 +4,12 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { AppState, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { ContextGuard } from '@/components/guards/ContextGuard';
+import { Button } from '@/components/Button';
 import { QuickAccessAuthModal } from '@/components/auth/QuickAccessAuthModal';
 import { Spinner } from '@/components/Spinner';
 import { TopbarUserMenuProvider } from '@/components/header/TopbarUserMenuContext';
@@ -19,8 +20,10 @@ import { useDevicePairing } from '@/hooks/useDevicePairing';
 import { useSync } from '@/hooks/useSync';
 import { useAutoLock } from '@/hooks/useAutoLock';
 import { usePermissionSync } from '@/hooks/usePermissionSync';
+import { useRuntimeCompatibility } from '@/hooks/useRuntimeCompatibility';
 import { markActivity } from '@/hooks/auto-lock.activity';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
+import { mobileLogTransportService } from '@/services/MobileLogTransportService';
 import { useAuthStore } from '@/store/auth.store';
 import { useContextStore } from '@/store/context.store';
 import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
@@ -298,6 +301,7 @@ function RedirectOnMount({
 }
 
 export default function App() {
+  const { t } = useTranslation();
   const { ready, deviceInitialized } = useAppInitialization();
   const { isOnline, isSyncing, syncNow } = useSync();
   const { trackEvent, setContext } = useAnalytics();
@@ -313,6 +317,13 @@ export default function App() {
   const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
   const operatingMode = useTerminalStore((s) => s.operatingMode);
   const capabilities = useTerminalStore((s) => s.capabilities);
+  const {
+    status: compatibilityStatus,
+    message: compatibilityMessage,
+    updateRequired,
+    updateRecommended,
+    checkCompatibility,
+  } = useRuntimeCompatibility();
   const [currentRouteName, setCurrentRouteName] = useState<string>('Login');
   const isRouteEnabled = (route: string) =>
     isShellRouteAccessible(
@@ -358,6 +369,28 @@ export default function App() {
   }, [trackEvent]);
 
   useEffect(() => {
+    mobileLogTransportService.start();
+    void checkCompatibility();
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void checkCompatibility();
+        void mobileLogTransportService.flushNow();
+        return;
+      }
+
+      if (state === 'background' || state === 'inactive') {
+        void mobileLogTransportService.flushNow();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+      mobileLogTransportService.stop();
+    };
+  }, [checkCompatibility]);
+
+  useEffect(() => {
     setContext({
       userId: user?.id,
       tenantId: user?.tenantId,
@@ -368,6 +401,47 @@ export default function App() {
 
   if (!ready) {
     return <LoadingScreen />;
+  }
+
+  if (updateRequired || compatibilityStatus === 'required') {
+    return (
+      <AppProviders>
+        <View
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: theme.spacing.s6,
+            backgroundColor: theme.colors.bgPage,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: theme.typography.sizeXl,
+              fontFamily: theme.typography.fontUi,
+              fontWeight: theme.typography.weightBold,
+              color: theme.colors.textPrimary,
+              marginBottom: theme.spacing.s3,
+              textAlign: 'center',
+            }}
+          >
+            {t('compatibility.requiredTitle')}
+          </Text>
+          <Text
+            style={{
+              fontSize: theme.typography.sizeBase,
+              fontFamily: theme.typography.fontUi,
+              color: theme.colors.textSecondary,
+              marginBottom: theme.spacing.s6,
+              textAlign: 'center',
+            }}
+          >
+            {compatibilityMessage || t('compatibility.requiredDescription')}
+          </Text>
+          <Button title={t('common.retry')} onPress={() => void checkCompatibility()} />
+        </View>
+      </AppProviders>
+    );
   }
 
   // On first launch (device never initialized), entry point is QR pairing.
@@ -389,6 +463,28 @@ export default function App() {
           }
         }}
       >
+        {updateRecommended || compatibilityStatus === 'unknown' ? (
+          <View
+            style={{
+              backgroundColor: updateRecommended ? theme.colors.warning : theme.colors.info,
+              paddingHorizontal: theme.spacing.s4,
+              paddingVertical: theme.spacing.s2,
+            }}
+          >
+            <Text
+              style={{
+                color: theme.colors.textInverse,
+                fontFamily: theme.typography.fontUi,
+                fontSize: theme.typography.sizeSm,
+              }}
+            >
+              {compatibilityMessage ||
+                (updateRecommended
+                  ? t('compatibility.recommendedDescription')
+                  : t('compatibility.unreachableDescription'))}
+            </Text>
+          </View>
+        ) : null}
         <SyncStatusBanner />
         <View
           style={{ flex: 1 }}

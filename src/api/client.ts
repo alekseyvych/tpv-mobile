@@ -5,7 +5,10 @@ import { analyticsService } from '@/services/AnalyticsService';
 import { syncService } from '@/services/SyncService';
 import type { ApiError } from '@/types/api';
 import { useAuthStore } from '@/store/auth.store';
+import { useContextStore } from '@/store/context.store';
+import { useTerminalStore } from '@/store/terminal.store';
 import { getTenantIdFromToken } from '@/utils/jwt';
+import { getRuntimeMetadata } from '@/utils/runtime-metadata';
 
 type RetriableConfig = InternalAxiosRequestConfig & { _retry?: boolean };
 
@@ -40,12 +43,40 @@ function isQueueCandidate(error: AxiosError, config?: RetriableConfig): boolean 
     return false;
   }
 
+  if (url.includes('/observability/mobile-logs')) {
+    return false;
+  }
+
   // Queue only when request did not reach backend (offline/network split).
   return !error.response;
 }
 
-function createCorrelationId(): string {
+export function createCorrelationId(): string {
   return `mob-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function buildClientMetadataHeaders(correlationId = createCorrelationId()): Record<string, string> {
+  const runtime = getRuntimeMetadata();
+  const localContext = useContextStore.getState().localContext;
+  const selectedTerminalId = useTerminalStore.getState().selectedTerminalId;
+
+  const headers: Record<string, string> = {
+    'X-Correlation-ID': correlationId,
+    'X-Mobile-App-Version': runtime.appVersion,
+    'X-Mobile-Build-Number': runtime.buildNumber,
+    'X-Mobile-Runtime-Version': runtime.runtimeVersion,
+    'X-Mobile-Platform': runtime.platform,
+  };
+
+  if (localContext?.deviceId) {
+    headers['X-Device-Id'] = localContext.deviceId;
+  }
+
+  if (selectedTerminalId) {
+    headers['X-Terminal-Id'] = selectedTerminalId;
+  }
+
+  return headers;
 }
 
 function normalizeError(error: AxiosError): ApiError {
@@ -67,7 +98,10 @@ async function onRequest(config: InternalAxiosRequestConfig): Promise<InternalAx
       config.headers['X-Tenant-ID'] = tenantId;
     }
   }
-  config.headers['X-Correlation-ID'] = createCorrelationId();
+  const clientHeaders = buildClientMetadataHeaders();
+  Object.entries(clientHeaders).forEach(([key, value]) => {
+    config.headers[key] = value;
+  });
   return config;
 }
 

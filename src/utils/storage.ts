@@ -5,6 +5,7 @@ const LANGUAGE_KEY = 'languagePreference';
 const OFFLINE_QUEUE_KEY = 'offlineMutationQueue';
 const SYNC_QUEUE_KEY = 'syncOperationQueue';
 const ANALYTICS_QUEUE_KEY = 'analyticsEventQueue';
+const MOBILE_LOG_QUEUE_KEY = 'mobileLogQueue';
 const DEVICE_INITIALIZED_KEY = 'deviceInitialized';
 
 async function setJsonValue(key: string, value: unknown): Promise<void> {
@@ -58,6 +59,14 @@ export async function setAnalyticsEventQueue(value: unknown): Promise<void> {
 
 export async function getAnalyticsEventQueue<T>(): Promise<T | null> {
   return getJsonValue<T>(ANALYTICS_QUEUE_KEY);
+}
+
+export async function setMobileLogQueue(value: unknown): Promise<void> {
+  await setJsonValue(MOBILE_LOG_QUEUE_KEY, value);
+}
+
+export async function getMobileLogQueue<T>(): Promise<T | null> {
+  return getJsonValue<T>(MOBILE_LOG_QUEUE_KEY);
 }
 
 export async function markDeviceInitialized(): Promise<void> {

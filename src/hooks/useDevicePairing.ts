@@ -23,6 +23,7 @@ export function useDevicePairing() {
       try {
         const result = await completePairing({ token, ...metadata });
         const context = {
+          deviceId: result.deviceId,
           tenantId: result.tenantId,
           installationId: result.installationId,
           deviceName: result.deviceName ?? undefined,
@@ -54,6 +55,7 @@ export function useDevicePairing() {
       try {
         const result = await completePairing({ manualCode, ...metadata });
         const context = {
+          deviceId: result.deviceId,
           tenantId: result.tenantId,
           installationId: result.installationId,
           deviceName: result.deviceName ?? undefined,

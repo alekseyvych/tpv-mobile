@@ -30,7 +30,6 @@ import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
 import { useRestaurantStore } from '@/store/restaurant.store';
 import { LoginScreen } from '@/screens/auth/LoginScreen';
 import { PINLoginScreen } from '@/screens/auth/PINLoginScreen';
-import { SetupScreen } from '@/screens/auth/SetupScreen';
 import { AppointmentsListScreen } from '@/screens/appointments/AppointmentsListScreen';
 import { BookAppointmentScreen } from '@/screens/appointments/BookAppointmentScreen';
 import { AppointmentDetailScreen } from '@/screens/appointments/AppointmentDetailScreen';
@@ -82,7 +81,6 @@ type RootStackParamList = {
   ContextCheck: undefined;
   Login: undefined;
   PinLogin: undefined;
-  Setup: undefined;
   TerminalSelection: { target?: 'Home' | 'Checkout' | 'DiningFloor' } | undefined;
   PairingMethod: undefined;
   PairingQr: undefined;
@@ -116,16 +114,6 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 type RootNavigation = NativeStackNavigationProp<RootStackParamList>;
-
-function SetupFallback({ navigation }: { navigation: RootNavigation }) {
-  return (
-    <SetupScreen
-      onGoLogin={() => navigation.replace('Login')}
-      onConnected={() => navigation.replace('Home')}
-      onStartPairing={() => navigation.navigate('PairingMethod')}
-    />
-  );
-}
 
 function AuthenticatedShellScreen({
   navigation,
@@ -519,7 +507,7 @@ export default function App() {
           children={({ navigation }) => (
             <LocalContextCheckScreen
               onContextReady={() => navigation.replace('Home')}
-              onSetupRequired={() => navigation.replace('Setup')}
+              onSetupRequired={() => navigation.replace('PairingMethod')}
               onLoginRequired={() => navigation.replace('Login')}
             />
           )}
@@ -539,16 +527,6 @@ export default function App() {
             <PINLoginScreen
               onBack={() => navigation.goBack()}
               onLoggedIn={() => navigation.replace('Home')}
-            />
-          )}
-        />
-        <Stack.Screen
-          name="Setup"
-          children={({ navigation }) => (
-            <SetupScreen
-              onGoLogin={() => navigation.navigate('Login')}
-              onConnected={() => navigation.replace('Home')}
-              onStartPairing={() => navigation.navigate('PairingMethod')}
             />
           )}
         />

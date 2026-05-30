@@ -23,12 +23,12 @@ export function LocalContextCheckScreen({ onContextReady, onSetupRequired, onLog
 
   useEffect(() => {
     async function check() {
-      // If user is not logged in, require login first
+      // Pairing establishes device context, but auth is still required afterward.
       if (!user) {
         if (onLoginRequired) {
           onLoginRequired();
         } else {
-          onSetupRequired(); // Setup screen has login option
+          onSetupRequired();
         }
         return;
       }

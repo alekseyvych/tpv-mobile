@@ -12,27 +12,3 @@ export async function getLocalInstallationContext(): Promise<LocalInstallationCo
   );
   return data;
 }
-
-/**
- * Create or update local installation context
- * PUT /local-installation-context
- * Called after device pairing to persist the binding
- */
-export async function upsertLocalInstallationContext(
-  input: Partial<LocalInstallationContextDto>
-): Promise<LocalInstallationContextDto> {
-  const { data } = await apiClient.put<LocalInstallationContextDto>(
-    '/local-installation-context',
-    input
-  );
-  return data;
-}
-
-/**
- * Clear local installation context (device reset / unpair)
- * DELETE /local-installation-context
- * Requires confirmation; typically called from admin settings
- */
-export async function clearLocalInstallationContextRemote(): Promise<void> {
-  await apiClient.delete('/local-installation-context');
-}

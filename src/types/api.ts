@@ -187,17 +187,17 @@ export type DevicePairingCompletionResponseDto = {
 
 /**
  * LocalInstallationContext: singleton per device
- * Stored in AsyncStorage, used to derive tenant + business context
+ * Stored in AsyncStorage, used to derive tenant + location context
  * Used by Quick Access to determine which tenant's staff profiles to load
  */
 export type LocalInstallationContextDto = {
   id: string; // Installation UUID
   tenantId: string; // Tenant ID (used for X-Tenant-ID header)
+  locationId?: string; // Location/site ID
+  terminalId?: string; // Terminal/station ID
   installationId?: string; // Stable installation context when configured
   deviceName?: string; // User-friendly device name
   deviceType: string; // "POS" | "KITCHEN_DISPLAY" etc.
-  restaurantId?: string; // Specific restaurant/venue ID if multi-location
-  restaurantName?: string; // Restaurant name for display
   configuredAt: string; // ISO timestamp
   configuredByUserId?: string; // User ID who configured pairing
   createdAt?: string;

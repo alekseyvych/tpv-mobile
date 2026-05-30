@@ -4,11 +4,7 @@ import { useContextStore } from '@/store/context.store';
 import type { LocalInstallationContext } from '@/types/store';
 import type { LocalInstallationContextDto } from '@/types/api';
 import { clearLocalContext, getLocalContext, setLocalContext } from '@/utils/storage';
-import {
-  clearLocalInstallationContextRemote,
-  getLocalInstallationContext,
-  upsertLocalInstallationContext,
-} from '@/api/context.api';
+import { getLocalInstallationContext } from '@/api/context.api';
 
 /**
  * Convert API DTO to store type
@@ -20,8 +16,10 @@ function dtoToStore(
   if (!dto) return null;
   return {
     id: dto.id,
-    deviceId: fallbackDeviceId,
+    deviceId: dto.deviceId ?? fallbackDeviceId,
     tenantId: dto.tenantId,
+    locationId: dto.locationId,
+    terminalId: dto.terminalId,
     installationId: dto.installationId ?? dto.id,
     deviceName: dto.deviceName,
     deviceType: dto.deviceType,
@@ -53,28 +51,7 @@ export function useLocalContext() {
     }
   }, [localContext?.deviceId, setStoreContext]);
 
-  const connectContext = useCallback(
-    async (input: Partial<LocalInstallationContextDto>): Promise<LocalInstallationContext | null> => {
-      try {
-        const remote = await upsertLocalInstallationContext(input);
-        const converted = dtoToStore(remote, localContext?.deviceId);
-        if (converted) {
-          await setLocalContext(converted);
-          setStoreContext(converted);
-        }
-        return converted;
-      } catch (err) {
-        console.error('Failed to connect context:', err);
-        return null;
-      }
-    },
-    [localContext?.deviceId, setStoreContext]
-  );
-
-  const clearContext = useCallback(async (options?: { clearRemote?: boolean }): Promise<void> => {
-    if (options?.clearRemote) {
-      await clearLocalInstallationContextRemote();
-    }
+  const clearContext = useCallback(async (): Promise<void> => {
     await clearLocalContext();
     setStoreContext(null);
   }, [setStoreContext]);
@@ -82,7 +59,6 @@ export function useLocalContext() {
   return {
     localContext,
     loadContext,
-    connectContext,
     clearContext,
   };
 }

@@ -31,14 +31,7 @@ type Props = {
 
 export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
   const { t } = useTranslation();
-  const {
-    appVersion,
-    canManageDeviceContext,
-    deviceInfo,
-    refreshDeviceContext,
-    updateDeviceContext,
-    clearRemoteDeviceContext,
-  } = useSettings();
+  const { appVersion, deviceInfo, refreshDeviceContext } = useSettings();
   const [installationId, setInstallationId] = useState(
     deviceInfo.installationId === 'unknown' ? '' : deviceInfo.installationId,
   );
@@ -68,46 +61,6 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
     }
   }
 
-  async function onSave() {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await updateDeviceContext({
-        installationId: installationId.trim() || undefined,
-        deviceName: deviceName.trim() || undefined,
-        deviceType: deviceType.trim() || undefined,
-      });
-      setMessage(t('settings.deviceContextSaved'));
-    } catch (error) {
-      if (extractPermissionError(error)) {
-        setError(t('settings.deviceContextPermissionError'));
-      } else {
-        setError(t('settings.deviceContextSaveError'));
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onClearRemote() {
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await clearRemoteDeviceContext();
-      setMessage(t('settings.deviceContextCleared'));
-    } catch (error) {
-      if (extractPermissionError(error)) {
-        setError(t('settings.deviceContextPermissionError'));
-      } else {
-        setError(t('settings.deviceContextClearError'));
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const content = (
     <>
       <Card>
@@ -123,21 +76,21 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
           value={installationId}
           onChangeText={setInstallationId}
           placeholder={t('settings.deviceContextInstallationPlaceholder')}
-          editable={canManageDeviceContext && !busy}
+          editable={false}
         />
         <View style={styles.spacer} />
         <Input
           value={deviceName}
           onChangeText={setDeviceName}
           placeholder={t('settings.deviceContextNamePlaceholder')}
-          editable={canManageDeviceContext && !busy}
+          editable={false}
         />
         <View style={styles.spacer} />
         <Input
           value={deviceType}
           onChangeText={setDeviceType}
           placeholder={t('settings.deviceContextTypePlaceholder')}
-          editable={canManageDeviceContext && !busy}
+          editable={false}
         />
         {message ? <BodyText style={styles.saved}>{message}</BodyText> : null}
         {error ? <ErrorText style={styles.message}>{error}</ErrorText> : null}
@@ -148,24 +101,7 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
             variant="secondary"
             fullWidth
           />
-          {embedded && canManageDeviceContext ? (
-            <Button
-              title={busy ? t('common.loading') : t('settings.deviceContextSaveAction')}
-              onPress={() => void onSave()}
-              disabled={busy}
-              fullWidth
-            />
-          ) : null}
-          {canManageDeviceContext ? (
-            <Button
-              title={busy ? t('common.loading') : t('settings.deviceContextClearAction')}
-              onPress={() => void onClearRemote()}
-              disabled={busy}
-              variant="danger"
-              fullWidth
-            />
-          ) : null}
-          {!canManageDeviceContext ? <BodyText>{t('settings.deviceContextRoleHint')}</BodyText> : null}
+          <BodyText>{t('settings.deviceContextRoleHint')}</BodyText>
         </View>
       </Card>
     </>
@@ -177,15 +113,7 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
 
   return (
     <ScreenPage>
-      <Topbar
-        title={t('settings.deviceInfoTitle')}
-        onBack={onBack}
-        rightActionLabel={canManageDeviceContext ? (busy ? t('common.loading') : t('settings.deviceContextSaveAction')) : undefined}
-        onRightAction={canManageDeviceContext ? (() => {
-          void onSave();
-        }) : undefined}
-        rightActionDisabled={busy}
-      />
+      <Topbar title={t('settings.deviceInfoTitle')} onBack={onBack} />
       <ScreenContent>{content}</ScreenContent>
     </ScreenPage>
   );

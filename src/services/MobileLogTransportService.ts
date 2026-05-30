@@ -126,7 +126,7 @@ class MobileLogTransportService {
     }
 
     try {
-      await axios.get(`${env.apiBaseUrl}/observability/health`, {
+      await axios.get(`${env.observabilityApiBaseUrl}/observability/health`, {
         timeout: Math.min(env.apiTimeoutSales, 3000),
         headers,
       });
@@ -236,7 +236,7 @@ class MobileLogTransportService {
         logs: due.map((item) => item.entry),
       };
 
-      await axios.post(`${env.apiBaseUrl}/observability/log-batches`, payload, {
+      await axios.post(`${env.observabilityApiBaseUrl}/observability/log-batches`, payload, {
         timeout: env.apiTimeoutSales,
         headers,
       });

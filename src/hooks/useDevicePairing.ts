@@ -4,7 +4,11 @@ import { completePairing } from '@/api/pairing.api';
 import { useContextStore } from '@/store/context.store';
 import { usePairingStore } from '@/store/pairing.store';
 import { logError, logInfo } from '@/utils/logger';
-import { setLocalContext } from '@/utils/storage';
+import {
+  getOrCreatePairingInstallationId,
+  setLocalContext,
+  setPairingInstallationId,
+} from '@/utils/storage';
 
 export function useDevicePairing() {
   const setLoading = usePairingStore((s) => s.setLoading);
@@ -21,7 +25,9 @@ export function useDevicePairing() {
       setLoading();
       logInfo('pairing.token.start', { tokenPreview: token.slice(0, 8), metadata });
       try {
-        const result = await completePairing({ token, ...metadata });
+        const stableInstallationId =
+          metadata?.installationId?.trim() || (await getOrCreatePairingInstallationId());
+        const result = await completePairing({ token, ...metadata, installationId: stableInstallationId });
         const context = {
           deviceId: result.deviceId,
           tenantId: result.tenantId,
@@ -31,6 +37,7 @@ export function useDevicePairing() {
           configuredAt: result.configuredAt,
         };
         await setLocalContext(context);
+        await setPairingInstallationId(result.installationId);
         setContext(context);
         setSuccess(result);
         logInfo('pairing.token.success', {
@@ -53,7 +60,13 @@ export function useDevicePairing() {
       setLoading();
       logInfo('pairing.manual.start', { manualCodePreview: manualCode.slice(0, 4), metadata });
       try {
-        const result = await completePairing({ manualCode, ...metadata });
+        const stableInstallationId =
+          metadata?.installationId?.trim() || (await getOrCreatePairingInstallationId());
+        const result = await completePairing({
+          manualCode,
+          ...metadata,
+          installationId: stableInstallationId,
+        });
         const context = {
           deviceId: result.deviceId,
           tenantId: result.tenantId,
@@ -63,6 +76,7 @@ export function useDevicePairing() {
           configuredAt: result.configuredAt,
         };
         await setLocalContext(context);
+        await setPairingInstallationId(result.installationId);
         setContext(context);
         setSuccess(result);
         logInfo('pairing.manual.success', {

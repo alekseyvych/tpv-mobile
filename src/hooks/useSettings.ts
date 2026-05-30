@@ -12,10 +12,6 @@ import { useLanguageStore } from '@/store/language.store';
 
 const APP_VERSION = packageJson.version;
 
-function hasPrivilegedRole(roles: string[]): boolean {
-  return roles.some((role) => ['MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(role.toUpperCase()));
-}
-
 export function useSettings() {
   const language = useLanguageStore((s) => s.language);
   const setLanguage = useLanguageStore((s) => s.setLanguage);
@@ -23,7 +19,7 @@ export function useSettings() {
   const user = useAuthStore((s) => s.user);
   const roles = useAuthStore((s) => s.roles);
   const { logout } = useAuth();
-  const { clearContext, connectContext, loadContext } = useLocalContext();
+  const { clearContext, loadContext } = useLocalContext();
 
   const deviceInfo = useMemo(
     () => ({
@@ -49,18 +45,6 @@ export function useSettings() {
     await loadContext();
   }
 
-  async function updateDeviceContext(input: {
-    installationId?: string;
-    deviceName?: string;
-    deviceType?: string;
-  }): Promise<void> {
-    await connectContext(input);
-  }
-
-  async function clearRemoteDeviceContext(): Promise<void> {
-    await clearContext({ clearRemote: true });
-  }
-
   async function logoutThisDevice(): Promise<void> {
     await analyticsService.trackEvent('auth.logout');
     await logout();
@@ -78,7 +62,7 @@ export function useSettings() {
   async function factoryReset(): Promise<void> {
     await syncService.clearQueue();
     analyticsService.shutdown();
-    await clearContext({ clearRemote: false });
+    await clearContext();
     await logout();
   }
 
@@ -87,13 +71,10 @@ export function useSettings() {
     user,
     roles,
     appVersion: APP_VERSION,
-    canManageDeviceContext: hasPrivilegedRole(roles),
     deviceInfo,
     changeLanguage,
     changeOwnPassword,
     refreshDeviceContext,
-    updateDeviceContext,
-    clearRemoteDeviceContext,
     logoutThisDevice,
     logoutEveryDevice,
     factoryReset,

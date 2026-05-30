@@ -13,6 +13,8 @@ export type LocalInstallationContext = {
   id?: string;
   deviceId?: string;
   tenantId: string;
+  locationId?: string;
+  terminalId?: string;
   installationId: string;
   deviceName?: string;
   deviceType?: string;

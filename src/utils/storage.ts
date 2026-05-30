@@ -7,6 +7,11 @@ const SYNC_QUEUE_KEY = 'syncOperationQueue';
 const ANALYTICS_QUEUE_KEY = 'analyticsEventQueue';
 const MOBILE_LOG_QUEUE_KEY = 'mobileLogQueue';
 const DEVICE_INITIALIZED_KEY = 'deviceInitialized';
+const PAIRING_INSTALLATION_ID_KEY = 'pairingInstallationId';
+
+function createInstallationId(): string {
+  return `install-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 async function setJsonValue(key: string, value: unknown): Promise<void> {
   await AsyncStorage.setItem(key, JSON.stringify(value));
@@ -80,4 +85,27 @@ export async function isDeviceInitialized(): Promise<boolean> {
 
 export async function clearDeviceInitialized(): Promise<void> {
   await AsyncStorage.removeItem(DEVICE_INITIALIZED_KEY);
+}
+
+export async function setPairingInstallationId(installationId: string): Promise<void> {
+  const normalized = installationId.trim();
+  if (!normalized) {
+    return;
+  }
+  await AsyncStorage.setItem(PAIRING_INSTALLATION_ID_KEY, normalized);
+}
+
+export async function getPairingInstallationId(): Promise<string | null> {
+  return AsyncStorage.getItem(PAIRING_INSTALLATION_ID_KEY);
+}
+
+export async function getOrCreatePairingInstallationId(): Promise<string> {
+  const existing = await getPairingInstallationId();
+  if (existing && existing.trim().length > 0) {
+    return existing;
+  }
+
+  const created = createInstallationId();
+  await setPairingInstallationId(created);
+  return created;
 }

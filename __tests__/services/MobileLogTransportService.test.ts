@@ -21,6 +21,7 @@ jest.mock('@/utils/storage', () => ({
 jest.mock('@/config/env', () => ({
   env: {
     apiBaseUrl: 'https://example.test',
+    observabilityApiBaseUrl: 'https://logs.tpvgrao.xyz',
     apiTimeoutSales: 5000,
   },
 }));
@@ -100,7 +101,7 @@ describe('MobileLogTransportService', () => {
     await mobileLogTransportService.flushNow();
 
     expect(mockAxiosPost).toHaveBeenCalledWith(
-      'https://example.test/observability/log-batches',
+      'https://logs.tpvgrao.xyz/observability/log-batches',
       expect.objectContaining({
         source: 'mobile',
         deviceId: 'device-1',
@@ -220,7 +221,7 @@ describe('MobileLogTransportService', () => {
 
     await mobileLogTransportService.flushNow();
     expect(mockAxiosPost).toHaveBeenCalledWith(
-      'https://example.test/observability/log-batches',
+      'https://logs.tpvgrao.xyz/observability/log-batches',
       expect.any(Object),
       expect.any(Object),
     );
@@ -242,7 +243,7 @@ describe('MobileLogTransportService', () => {
     await mobileLogTransportService.flushNow();
 
     expect(mockAxiosGet).toHaveBeenCalledWith(
-      'https://example.test/observability/health',
+      'https://logs.tpvgrao.xyz/observability/health',
       expect.objectContaining({
         timeout: 3000,
       }),

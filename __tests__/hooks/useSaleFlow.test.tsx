@@ -92,6 +92,7 @@ describe('useSaleFlow', () => {
         { productId: 'p2', quantity: 1 },
       ],
       'shift-1',
+      'completion-key-1',
     );
   });
 
@@ -167,6 +168,58 @@ describe('useSaleFlow', () => {
       [{ method: 'CARD', amount: 12 }],
       'completion-key-1',
     );
+  });
+
+  it('reuses completion key on retry and rotates key for a new sale intent', async () => {
+    let flow: ReturnType<typeof useSaleFlow> | null = null;
+
+    useTerminalStore.getState().setSelectedTerminal('term-1', 'RETAIL', null);
+    useTerminalStore.getState().setActiveCashShiftId('shift-1');
+    useSaleStore.setState({
+      lines: [{ productId: 'p1', name: 'Coffee', price: 4, quantity: 2 }],
+      lastSaleId: null,
+    });
+
+    mockGenerateUUID
+      .mockReturnValueOnce('create-key-1')
+      .mockReturnValueOnce('completion-key-retry')
+      .mockReturnValueOnce('create-key-2')
+      .mockReturnValueOnce('completion-key-new');
+
+    (createSale as jest.Mock)
+      .mockResolvedValueOnce({ id: 'sale-1', status: 'OPEN', total: 8 })
+      .mockResolvedValueOnce({ id: 'sale-2', status: 'OPEN', total: 6 });
+
+    (completeSale as jest.Mock)
+      .mockRejectedValueOnce(new Error('temporary network error'))
+      .mockResolvedValueOnce({ id: 'sale-1', total: 8 })
+      .mockResolvedValueOnce({ id: 'sale-2', total: 6 });
+
+    render(<SaleFlowProbe onReady={(value) => {
+      flow = value;
+    }} />);
+
+    await act(async () => {
+      await expect(flow?.submitSale('CASH', 10)).rejects.toThrow('temporary network error');
+    });
+
+    await act(async () => {
+      await flow?.submitSale('CASH', 10);
+    });
+
+    act(() => {
+      useSaleStore.setState({
+        lines: [{ productId: 'p2', name: 'Tea', price: 3, quantity: 2 }],
+      });
+    });
+
+    await act(async () => {
+      await flow?.submitSale('CARD');
+    });
+
+    expect((completeSale as jest.Mock).mock.calls[0][2]).toBe('completion-key-retry');
+    expect((completeSale as jest.Mock).mock.calls[1][2]).toBe('completion-key-retry');
+    expect((completeSale as jest.Mock).mock.calls[2][2]).toBe('completion-key-new');
   });
 
   it('resetPendingSale clears previously prepared pending sale', async () => {

@@ -12,6 +12,7 @@
  */
 
 import { apiClient } from './client'
+import { generateUUID } from '@/utils/uuid'
 
 import type {
   RestaurantTable,
@@ -214,8 +215,13 @@ export const restaurantApi = {
       options?: OrderItemOption[]
     }>
     notes?: string
-  }): Promise<RestaurantOrder> => {
-    const response = await apiClient.post<Record<string, unknown>>('/restaurant/orders', data)
+  }, idempotencyKey?: string): Promise<RestaurantOrder> => {
+    const requestIdempotencyKey = idempotencyKey ?? generateUUID()
+    const response = await apiClient.post<Record<string, unknown>>('/restaurant/orders', data, {
+      headers: {
+        'Idempotency-Key': requestIdempotencyKey
+      }
+    })
     return normalizeOrder(response.data)
   },
 
@@ -231,9 +237,15 @@ export const restaurantApi = {
       quantity: number
       notes?: string
       options?: OrderItemOption[]
-    }
+    },
+    idempotencyKey?: string
   ): Promise<void> => {
-    await apiClient.post(`/restaurant/orders/${orderId}/items`, body)
+    const requestIdempotencyKey = idempotencyKey ?? generateUUID()
+    await apiClient.post(`/restaurant/orders/${orderId}/items`, body, {
+      headers: {
+        'Idempotency-Key': requestIdempotencyKey
+      }
+    })
   },
 
   /**
@@ -350,11 +362,18 @@ export const restaurantApi = {
       }>
       terminalId?: string
       fiscalSeriesId?: string
-    }
+    },
+    idempotencyKey?: string
   ): Promise<{ sale: { id: string }; order: RestaurantOrder }> => {
+    const requestIdempotencyKey = idempotencyKey ?? generateUUID()
     const response = await apiClient.post<{ sale: { id: string }; order: RestaurantOrder }>(
       `/restaurant/orders/${orderId}/umbrella-sale`,
-      body
+      body,
+      {
+        headers: {
+          'Idempotency-Key': requestIdempotencyKey
+        }
+      }
     )
     return response.data
   },
@@ -385,12 +404,18 @@ export const restaurantApi = {
       saleId: string
       orderItemIds: string[]
       saleLineSnapshots: Array<{ productId: string; quantity: number; total: number }>
-    }
+    },
+    idempotencyKey?: string
   ): Promise<{ orderClosed: boolean; remainingItemCount: number }> => {
+    const requestIdempotencyKey = idempotencyKey ?? generateUUID()
     const response = await apiClient.post<{
       orderClosed: boolean
       remainingItemCount: number
-    }>(`/restaurant/orders/${orderId}/group-payment/settle`, body)
+    }>(`/restaurant/orders/${orderId}/group-payment/settle`, body, {
+      headers: {
+        'Idempotency-Key': requestIdempotencyKey
+      }
+    })
     return response.data
   },
 
@@ -441,7 +466,8 @@ export const getOrdersByTable = async (tableId: string): Promise<RestaurantOrder
 }
 
 export const createOrder = async (
-  tableId: string
+  tableId: string,
+  idempotencyKey?: string
 ): Promise<RestaurantOrder> => {
-  return restaurantApi.createOrder({ tableId, items: [] })
+  return restaurantApi.createOrder({ tableId, items: [] }, idempotencyKey)
 }

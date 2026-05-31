@@ -28,6 +28,7 @@ import { restaurantApi } from '@/api/restaurant.api';
 import { useCatalog } from '@/hooks/useCatalog';
 import { useRestaurantStore } from '@/store/restaurant.store';
 import { useDeviceProfile } from '@/platform/useDeviceProfile';
+import { generateUUID } from '@/utils/uuid';
 
 interface ProductWithExtras {
   id: string;
@@ -121,6 +122,10 @@ export function OrderCreationScreen() {
   const creatingOrderPromiseRef = useRef<Promise<string> | null>(null);
   const queuedQuickAddsRef = useRef<Record<string, number>>({});
   const processingQuickAddsRef = useRef<Record<string, boolean>>({});
+  const nextRestaurantIdempotencyKey = useCallback(
+    (operation: 'create-order' | 'add-item') => `restaurant.${operation}.${generateUUID()}`,
+    [],
+  );
 
   useEffect(() => {
     if (!selectedTableId) {
@@ -370,7 +375,11 @@ export function OrderCreationScreen() {
       const activeOrderId = activeOrderIdRef.current ?? orderId;
 
       if (activeOrderId) {
-        await restaurantApi.addOrderItem(activeOrderId, itemPayload);
+        await restaurantApi.addOrderItem(
+          activeOrderId,
+          itemPayload,
+          nextRestaurantIdempotencyKey('add-item'),
+        );
         setSelectedOrder(activeOrderId);
         activeOrderIdRef.current = activeOrderId;
         if (selectedTableId) {
@@ -385,7 +394,7 @@ export function OrderCreationScreen() {
           tableId: selectedTableId,
           partySize: selectedGuestCountDraft ?? undefined,
           items: [itemPayload]
-        });
+        }, nextRestaurantIdempotencyKey('create-order'));
         setSelectedOrder(createdOrder.id);
         activeOrderIdRef.current = createdOrder.id;
         updateTable(selectedTableId, { currentOrderId: createdOrder.id, status: 'occupied' });
@@ -403,6 +412,7 @@ export function OrderCreationScreen() {
       updateTable,
       setSelectedGuestCountDraft,
       t,
+      nextRestaurantIdempotencyKey,
     ]
   );
 
@@ -509,7 +519,11 @@ export function OrderCreationScreen() {
 
             const currentOrderId = activeOrderIdRef.current ?? orderId;
             if (currentOrderId) {
-              await restaurantApi.addOrderItem(currentOrderId, itemPayload);
+              await restaurantApi.addOrderItem(
+                currentOrderId,
+                itemPayload,
+                nextRestaurantIdempotencyKey('add-item'),
+              );
               setSelectedOrder(currentOrderId);
             } else {
               if (!selectedTableId) {
@@ -521,7 +535,7 @@ export function OrderCreationScreen() {
                     tableId: selectedTableId,
                     partySize: selectedGuestCountDraft ?? undefined,
                     items: [itemPayload],
-                  })
+                  }, nextRestaurantIdempotencyKey('create-order'))
                   .then((createdOrder) => {
                     setSelectedOrder(createdOrder.id);
                     activeOrderIdRef.current = createdOrder.id;
@@ -572,7 +586,16 @@ export function OrderCreationScreen() {
         processingQuickAddsRef.current[productId] = false;
       }
     },
-    [orderId, selectedTableId, selectedGuestCountDraft, setSelectedOrder, updateTable, setSelectedGuestCountDraft, t],
+    [
+      orderId,
+      selectedTableId,
+      selectedGuestCountDraft,
+      setSelectedOrder,
+      updateTable,
+      setSelectedGuestCountDraft,
+      t,
+      nextRestaurantIdempotencyKey,
+    ],
   );
 
   const handleQuickAdd = useCallback(

@@ -201,7 +201,7 @@ function AuthenticatedShellScreen({
   }
 
   return (
-    <ContextGuard fallback={<SetupFallback navigation={navigation} />}>
+    <ContextGuard fallback={<LoadingScreen />}>
       <TopbarUserMenuProvider
         value={{
           onLogout: () => {

@@ -18,6 +18,7 @@ import {
   startCardPayment,
 } from '@/api/card-payment-runtime.api';
 import type { CardPaymentRuntimeState, CardPaymentTransaction, TerminalProfile } from '@/api/card-payment-runtime.api';
+import { generateUUID } from '@/utils/uuid';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -87,6 +88,33 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
   const [state, setState] = useState<UseCardPaymentRuntimeState>(INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pendingSaleRef = useRef<{ saleId: string; amount: number; posTerminalId: string } | null>(null);
+  const startKeyRef = useRef<string | null>(null);
+  const cancelKeyRef = useRef<{ transactionId: string; key: string } | null>(null);
+  const fallbackKeyRef = useRef<{ transactionId: string; key: string } | null>(null);
+
+  function nextStartKey(): string {
+    const key = startKeyRef.current ?? `card.start.${generateUUID()}`;
+    startKeyRef.current = key;
+    return key;
+  }
+
+  function nextCancelKey(transactionId: string): string {
+    if (cancelKeyRef.current?.transactionId === transactionId) {
+      return cancelKeyRef.current.key;
+    }
+    const key = `card.cancel.${generateUUID()}`;
+    cancelKeyRef.current = { transactionId, key };
+    return key;
+  }
+
+  function nextFallbackKey(transactionId: string): string {
+    if (fallbackKeyRef.current?.transactionId === transactionId) {
+      return fallbackKeyRef.current.key;
+    }
+    const key = `card.fallback.${generateUUID()}`;
+    fallbackKeyRef.current = { transactionId, key };
+    return key;
+  }
 
   // Cleanup on unmount
   useEffect(() => {
@@ -119,6 +147,9 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
 
   const begin = useCallback((saleId: string, amount: number, posTerminalId: string) => {
     pendingSaleRef.current = { saleId, amount, posTerminalId };
+    startKeyRef.current = `card.start.${generateUUID()}`;
+    cancelKeyRef.current = null;
+    fallbackKeyRef.current = null;
     setState((prev) => ({ ...prev, phase: 'loading_profiles', error: null }));
 
     void fetchTerminalPaymentSettings(posTerminalId).then((settings) => {
@@ -196,7 +227,7 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
         amount,
         terminalProfileId: profile.id,
         posTerminalId: pendingSaleRef.current.posTerminalId,
-      });
+      }, nextStartKey());
       setState((prev) => ({ ...prev, transaction: tx }));
       if (!TERMINAL_STATES.includes(tx.state)) {
         startPolling(tx.id);
@@ -217,7 +248,7 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
     if (!tx) return;
     stopPolling();
     try {
-      const cancelled = await cancelCardPayment(tx.id);
+      const cancelled = await cancelCardPayment(tx.id, nextCancelKey(tx.id));
       setState((prev) => ({ ...prev, transaction: cancelled, phase: 'done' }));
     } catch {
       setState((prev) => ({
@@ -253,7 +284,11 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
     if (!tx) return;
     stopPolling();
     try {
-      const result = await fallbackCardPaymentToExternal(tx.id, { externalTerminalProfileId: externalProfileId });
+      const result = await fallbackCardPaymentToExternal(
+        tx.id,
+        { externalTerminalProfileId: externalProfileId },
+        nextFallbackKey(tx.id),
+      );
       // New transaction started on external terminal — start polling it
       setState((prev) => ({
         ...prev,
@@ -277,6 +312,9 @@ export function useCardPaymentRuntime(): UseCardPaymentRuntimeResult {
   const reset = useCallback(() => {
     stopPolling();
     pendingSaleRef.current = null;
+    startKeyRef.current = null;
+    cancelKeyRef.current = null;
+    fallbackKeyRef.current = null;
     setState(INITIAL_STATE);
   }, []);
 

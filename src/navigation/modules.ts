@@ -38,6 +38,7 @@ export interface NavModule {
   primary?: boolean;      // Show in phone bottom nav (first 5)
   locked?: boolean;       // License or permission locked
   lockedReason?: string;  // i18n key for lock reason
+  hidden?: boolean;       // Hide from navigation surfaces while keeping route support
 }
 
 /**
@@ -114,6 +115,7 @@ const OPERATIONAL_MODULES: NavModule[] = [
     route: 'AppointmentsList',  // Existing appointments screen
     section: 'operational',
     primary: false,
+    hidden: true,
   },
   {
     id: 'workshop',
@@ -124,6 +126,7 @@ const OPERATIONAL_MODULES: NavModule[] = [
     primary: false,
     locked: true,
     lockedReason: 'layout.moduleLockedReasons.notAvailable',
+    hidden: true,
   },
 ];
 
@@ -247,7 +250,7 @@ export function getPrimaryModules(): NavModule[] {
  */
 export function getSecondaryModules(): NavModule[] {
   const primaryIds = new Set(getPrimaryModules().map((m) => m.id));
-  return ALL_MODULES.filter((m) => !primaryIds.has(m.id));
+  return ALL_MODULES.filter((m) => !primaryIds.has(m.id) && !m.hidden);
 }
 
 /**
@@ -256,7 +259,7 @@ export function getSecondaryModules(): NavModule[] {
 export function getModulesBySection(
   section: 'operational' | 'administrative' | 'settings'
 ): NavModule[] {
-  return NAVIGATION_MODULES[section];
+  return NAVIGATION_MODULES[section].filter((module) => !module.hidden);
 }
 
 /**

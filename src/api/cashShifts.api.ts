@@ -1,4 +1,5 @@
 import { apiClient } from './client'
+import { generateUUID } from '@/utils/uuid'
 
 export type ActiveCashShift = {
   id: string
@@ -30,10 +31,20 @@ export async function getActiveCashShift(registerId: string): Promise<ActiveCash
 export async function openCashShift(
   registerId: string,
   openingBalance: number,
+  idempotencyKey?: string,
 ): Promise<OpenedCashShift> {
-  const response = await apiClient.post<OpenedCashShift>('/cash-shifts', {
-    registerId,
-    openingBalance,
-  })
+  const requestIdempotencyKey = idempotencyKey ?? generateUUID()
+  const response = await apiClient.post<OpenedCashShift>(
+    '/cash-shifts',
+    {
+      registerId,
+      openingBalance,
+    },
+    {
+      headers: {
+        'Idempotency-Key': requestIdempotencyKey,
+      },
+    },
+  )
   return response.data
 }

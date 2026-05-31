@@ -25,6 +25,7 @@ import { getTerminal } from '@/api/terminals.api';
 import { restaurantApi } from '@/api/restaurant.api';
 import { useTerminalStore } from '@/store/terminal.store';
 import { useWaiterHomeStore } from '@/store/waiter-home.store';
+import { generateUUID } from '@/utils/uuid';
 import {
   buildRestaurantPayments,
   computeIterationTotalFromMappedSale,
@@ -46,6 +47,7 @@ type PendingDevSimPayment = {
   saleId: string;
   cardTxId: string;
   cardAmount: number;
+  completeSaleIdempotencyKey: string;
   payments: PaymentDto[];
   consumeStockLineItemIds: string[];
   selectedRows: Array<{ id: string; productId: string; quantity: number }>;
@@ -78,6 +80,15 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
   const [devSimSnapshot, setDevSimSnapshot] = useState<Record<string, unknown> | null>(null);
   const [devSimProcessing, setDevSimProcessing] = useState(false);
   const [devSimPending, setDevSimPending] = useState<PendingDevSimPayment | null>(null);
+
+  const nextRestaurantIdempotencyKey = useCallback(
+    (operation: 'umbrella-sale' | 'group-settle') => `restaurant.${operation}.${generateUUID()}`,
+    [],
+  );
+  const nextSalesCompleteIdempotencyKey = useCallback(
+    () => `sales.complete.${generateUUID()}`,
+    [],
+  );
   const [terminalProfileMissingVisible, setTerminalProfileMissingVisible] = useState(false);
   const [terminalProfileMissingTerminal, setTerminalProfileMissingTerminal] = useState<string | null>(null);
 
@@ -299,7 +310,11 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
         selectedRowIds: selectedRows.map((r) => r.id),
       });
 
-      const created = await restaurantApi.createUmbrellaSale(orderId, umbrellaBody);
+      const created = await restaurantApi.createUmbrellaSale(
+        orderId,
+        umbrellaBody,
+        nextRestaurantIdempotencyKey('umbrella-sale'),
+      );
 
       setOrder(created.order);
       setResumeContext({
@@ -319,7 +334,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       selectedRows,
       orderItemToSaleLineId: resume?.orderItemIdToSaleLineId ?? {}
     };
-  }, [ensureShift, order, orderId, setResumeContext, t, tableId]);
+  }, [ensureShift, order, orderId, setResumeContext, t, tableId, nextRestaurantIdempotencyKey]);
 
   const ensureCardTerminalProfileConfigured = useCallback(async (): Promise<string | null> => {
     if (!selectedTerminalId) {
@@ -400,6 +415,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
           mixedCashAmount,
           mixedAmountErrorMessage: t('pos.mixedAmountError'),
         });
+        const completeSaleIdempotencyKey = nextSalesCompleteIdempotencyKey();
 
         // DEV ONLY: for CARD/MIXED, start real card transaction then open simulator
         if (__DEV__ && (method === 'CARD' || method === 'MIXED') && selectedTerminalId) {
@@ -425,6 +441,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
             saleId,
             cardTxId: tx.id,
             cardAmount,
+            completeSaleIdempotencyKey,
             payments,
             consumeStockLineItemIds,
             selectedRows,
@@ -436,7 +453,7 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
           return;
         }
 
-        await completeSale(saleId, payments, undefined, {
+        await completeSale(saleId, payments, completeSaleIdempotencyKey, {
           consumeStockLineItemIds: consumeStockLineItemIds.length
             ? consumeStockLineItemIds
             : undefined
@@ -453,11 +470,15 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
           consumeStockLineItemIds,
         });
 
-        const settled = await restaurantApi.settlePaidGroupItems(orderId, {
-          saleId,
-          orderItemIds: selectedRows.map((row) => row.id),
-          saleLineSnapshots: selectedSnapshots
-        });
+        const settled = await restaurantApi.settlePaidGroupItems(
+          orderId,
+          {
+            saleId,
+            orderItemIds: selectedRows.map((row) => row.id),
+            saleLineSnapshots: selectedSnapshots
+          },
+          nextRestaurantIdempotencyKey('group-settle'),
+        );
 
         setCashTendered('');
         setMixedCashAmount('');
@@ -504,6 +525,8 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       t,
       loadContext,
       finalizeClosedOrder,
+      nextRestaurantIdempotencyKey,
+      nextSalesCompleteIdempotencyKey,
     ]
   );
 
@@ -544,25 +567,29 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
         // Integrated card approval already wrote card payment and updated sale state.
         // For mixed, only the cash remainder should be completed here.
         if (cashLeg) {
-          await completeSale(pending.saleId, [cashLeg], undefined, {
+          await completeSale(pending.saleId, [cashLeg], pending.completeSaleIdempotencyKey, {
             consumeStockLineItemIds: pending.consumeStockLineItemIds.length
               ? pending.consumeStockLineItemIds
               : undefined,
           });
         }
       } else {
-        await completeSale(pending.saleId, pending.payments, undefined, {
+        await completeSale(pending.saleId, pending.payments, pending.completeSaleIdempotencyKey, {
           consumeStockLineItemIds: pending.consumeStockLineItemIds.length
             ? pending.consumeStockLineItemIds
             : undefined,
         });
       }
 
-      const settled = await restaurantApi.settlePaidGroupItems(orderId, {
-        saleId: pending.saleId,
-        orderItemIds: pending.selectedRows.map((r) => r.id),
-        saleLineSnapshots: pending.selectedSnapshots,
-      });
+      const settled = await restaurantApi.settlePaidGroupItems(
+        orderId,
+        {
+          saleId: pending.saleId,
+          orderItemIds: pending.selectedRows.map((r) => r.id),
+          saleLineSnapshots: pending.selectedSnapshots,
+        },
+        nextRestaurantIdempotencyKey('group-settle'),
+      );
       setCashTendered('');
       setMixedCashAmount('');
       setMethod('CASH');
@@ -591,7 +618,16 @@ export function RestaurantCheckoutScreen({ tableId, orderId, onBack, onSuccess }
       setDevSimProcessing(false);
       setProcessing(false);
     }
-  }, [devSimPending, devSimOutcome, devSimDelayMs, orderId, t, loadContext, finalizeClosedOrder]);
+  }, [
+    devSimPending,
+    devSimOutcome,
+    devSimDelayMs,
+    orderId,
+    t,
+    loadContext,
+    finalizeClosedOrder,
+    nextRestaurantIdempotencyKey,
+  ]);
 
   const handleDevSimCancel = useCallback(() => {
     setDevSimPending(null);

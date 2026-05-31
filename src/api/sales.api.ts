@@ -1,5 +1,6 @@
 import { apiClient } from './client';
 import type { SaleDto, SaleLineInputDto, PaymentDto, ReceiptDto, RefundDto } from '@/types/api';
+import { generateUUID } from '@/utils/uuid';
 
 /**
  * Create a new sale (starts empty cart)
@@ -9,18 +10,23 @@ import type { SaleDto, SaleLineInputDto, PaymentDto, ReceiptDto, RefundDto } fro
  *   - lineItems (array, min 1) — field name is `lineItems`, NOT `lines`
  *   - cashShiftId (UUID, required) — must be an open cash shift for this terminal
  *
- * Note: Backend does NOT accept notes or idempotencyKey in POST /sales.
- * If notes are needed, they would be added via a different endpoint.
+ * Supports optional Idempotency-Key header for retry-safe create.
  */
 export async function createSale(
   lines: SaleLineInputDto[],
   cashShiftId: string,
+  idempotencyKey?: string,
 ): Promise<SaleDto> {
+  const requestIdempotencyKey = idempotencyKey ?? generateUUID();
   const input = {
     lineItems: lines,
     cashShiftId,
   };
-  const { data } = await apiClient.post<SaleDto>('/sales', input);
+  const { data } = await apiClient.post<SaleDto>('/sales', input, {
+    headers: {
+      'Idempotency-Key': requestIdempotencyKey,
+    },
+  });
   return data;
 }
 
@@ -32,14 +38,15 @@ export async function createSale(
  *   - payments (required): array of { amount, method ('cash'|'card'|'transfer'), amountTendered? }
  *   - consumeStockLineItemIds (optional): array of line item UUIDs to consume stock for
  *
- * NO RETRY semantics: DO NOT retry if response times out. Check sale status instead.
+ * Supports optional Idempotency-Key header for retry-safe completion.
  */
 export async function completeSale(
   saleId: string,
   payments: PaymentDto[],
-  _idempotencyKey?: string, // Deprecated: backend doesn't accept this anymore
+  idempotencyKey?: string,
   options?: { consumeStockLineItemIds?: string[] }
 ): Promise<SaleDto> {
+  const requestIdempotencyKey = idempotencyKey ?? generateUUID();
   const consumeStockLineItemIds = options?.consumeStockLineItemIds?.filter(Boolean) ?? [];
   // Normalize payment methods to lowercase ('CASH' → 'cash')
   const normalizedPayments = payments.map((p) => ({
@@ -51,7 +58,11 @@ export async function completeSale(
     payments: normalizedPayments,
     ...(consumeStockLineItemIds.length > 0 ? { consumeStockLineItemIds } : {}),
   };
-  const { data } = await apiClient.post<SaleDto>(`/sales/${saleId}/complete`, input);
+  const { data } = await apiClient.post<SaleDto>(`/sales/${saleId}/complete`, input, {
+    headers: {
+      'Idempotency-Key': requestIdempotencyKey,
+    },
+  });
   return data;
 }
 
@@ -78,9 +89,19 @@ export async function getSaleReceipt(saleId: string): Promise<ReceiptDto> {
  * Refund a sale (full or partial)
  * POST /sales/{saleId}/refund
  */
-export async function refundSale(saleId: string, amount?: number, reason?: string): Promise<RefundDto> {
+export async function refundSale(
+  saleId: string,
+  amount?: number,
+  reason?: string,
+  idempotencyKey?: string,
+): Promise<RefundDto> {
+  const requestIdempotencyKey = idempotencyKey ?? generateUUID();
   const input = { amount, reason };
-  const { data } = await apiClient.post<RefundDto>(`/sales/${saleId}/refund`, input);
+  const { data } = await apiClient.post<RefundDto>(`/sales/${saleId}/refund`, input, {
+    headers: {
+      'Idempotency-Key': requestIdempotencyKey,
+    },
+  });
   return data;
 }
 

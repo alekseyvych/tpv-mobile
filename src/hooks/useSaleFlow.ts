@@ -17,8 +17,9 @@ export function useSaleFlow() {
   const lastSaleId = useSaleStore((s) => s.lastSaleId);
   const activeCashShiftId = useTerminalStore((s) => s.activeCashShiftId);
   const [pendingSale, setPendingSale] = useState<SaleDto | null>(null);
-  
-  // Track completion key to prevent double submission (no-retry semantics)
+
+  // Keep stable keys while the same operation intent is being retried.
+  const createKeyRef = useRef<string | null>(null);
   const completionKeyRef = useRef<string | null>(null);
 
   const toSaleLineInputs = useCallback((): SaleLineInputDto[] => {
@@ -39,8 +40,12 @@ export function useSaleFlow() {
     }
 
     const lineInputs = toSaleLineInputs();
-    const sale = await createSale(lineInputs, activeCashShiftId);
+    const createKey = createKeyRef.current ?? generateUUID();
+    createKeyRef.current = createKey;
+
+    const sale = await createSale(lineInputs, activeCashShiftId, createKey);
     setPendingSale(sale);
+    createKeyRef.current = null;
     return sale;
   }, [activeCashShiftId, pendingSale, toSaleLineInputs]);
 
@@ -48,7 +53,7 @@ export function useSaleFlow() {
     async (payments: PaymentDto[]): Promise<string> => {
       const sale = pendingSale ?? (await prepareSale());
 
-      const completionKey = generateUUID();
+      const completionKey = completionKeyRef.current ?? generateUUID();
       completionKeyRef.current = completionKey;
 
       const completed = await completeSale(sale.id, payments, completionKey);
@@ -67,6 +72,8 @@ export function useSaleFlow() {
 
       clearCart();
       setPendingSale(null);
+      completionKeyRef.current = null;
+      createKeyRef.current = null;
       return completed.id;
     },
     [clearCart, pendingSale, prepareSale, setLastSaleId],
@@ -111,6 +118,8 @@ export function useSaleFlow() {
 
   const resetPendingSale = useCallback(() => {
     setPendingSale(null);
+    completionKeyRef.current = null;
+    createKeyRef.current = null;
   }, []);
 
   return {

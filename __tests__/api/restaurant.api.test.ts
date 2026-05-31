@@ -69,7 +69,8 @@ describe('restaurant api', () => {
         expect.objectContaining({
           tableId: 'table-1',
           items: [{ productId: 'prod-1', quantity: 2 }]
-        })
+        }),
+        expect.any(Object)
       );
       expect(result).toEqual(expect.objectContaining({
         id: 'order-1',
@@ -85,6 +86,37 @@ describe('restaurant api', () => {
         }),
       ]));
     });
+
+    it('forwards Idempotency-Key when provided', async () => {
+      const order = {
+        id: 'order-1',
+        tableId: 'table-1',
+        status: 'pending',
+        items: [],
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z'
+      }
+      const spy = jest.spyOn(apiClient, 'post').mockResolvedValue({ data: order } as never)
+
+      await restaurantApi.createOrder(
+        {
+          tableId: 'table-1',
+          items: [{ productId: 'prod-1', quantity: 2 }]
+        },
+        'mobile-create-idem-1'
+      )
+
+      expect(spy).toHaveBeenCalledWith(
+        '/restaurant/orders',
+        expect.objectContaining({
+          tableId: 'table-1',
+          items: [{ productId: 'prod-1', quantity: 2 }]
+        }),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': 'mobile-create-idem-1' })
+        })
+      )
+    })
   });
 
   describe('addOrderItem', () => {
@@ -103,10 +135,92 @@ describe('restaurant api', () => {
           productId: 'prod-1',
           quantity: 1,
           options: [{ name: 'extra', value: 'cheese' }]
-        })
+        }),
+        expect.any(Object)
       );
     });
+
+    it('forwards Idempotency-Key when provided', async () => {
+      const spy = jest.spyOn(apiClient, 'post').mockResolvedValue({} as never)
+
+      await restaurantApi.addOrderItem(
+        'order-1',
+        {
+          productId: 'prod-1',
+          quantity: 1,
+          options: [{ name: 'extra', value: 'cheese' }]
+        },
+        'mobile-add-idem-1'
+      )
+
+      expect(spy).toHaveBeenCalledWith(
+        '/restaurant/orders/order-1/items',
+        expect.objectContaining({
+          productId: 'prod-1',
+          quantity: 1,
+          options: [{ name: 'extra', value: 'cheese' }]
+        }),
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': 'mobile-add-idem-1' })
+        })
+      )
+    })
   });
+
+  describe('umbrella and settle idempotency', () => {
+    it('forwards Idempotency-Key for createUmbrellaSale', async () => {
+      const spy = jest.spyOn(apiClient, 'post').mockResolvedValue({
+        data: {
+          sale: { id: 'sale-1' },
+          order: {
+            id: 'order-1',
+            status: 'pending',
+            items: [],
+            createdAt: '2024-01-01T00:00:00Z',
+            updatedAt: '2024-01-01T00:00:00Z'
+          }
+        }
+      } as never)
+
+      const body = {
+        cashShiftId: 'shift-1',
+        lineItems: [{ productId: 'prod-1', quantity: 1 }]
+      }
+      await restaurantApi.createUmbrellaSale('order-1', body, 'mobile-umbrella-idem-1')
+
+      expect(spy).toHaveBeenCalledWith(
+        '/restaurant/orders/order-1/umbrella-sale',
+        body,
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': 'mobile-umbrella-idem-1' })
+        })
+      )
+    })
+
+    it('forwards Idempotency-Key for settlePaidGroupItems', async () => {
+      const spy = jest.spyOn(apiClient, 'post').mockResolvedValue({
+        data: {
+          orderClosed: false,
+          remainingItemCount: 1
+        }
+      } as never)
+
+      const body = {
+        saleId: 'sale-1',
+        orderItemIds: ['item-1'],
+        saleLineSnapshots: [{ productId: 'prod-1', quantity: 1, total: 10 }]
+      }
+      await restaurantApi.settlePaidGroupItems('order-1', body, 'mobile-settle-idem-1')
+
+      expect(spy).toHaveBeenCalledWith(
+        '/restaurant/orders/order-1/group-payment/settle',
+        body,
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'Idempotency-Key': 'mobile-settle-idem-1' })
+        })
+      )
+    })
+  })
 
   describe('updateOrderItemStatus', () => {
     it('updates item status', async () => {

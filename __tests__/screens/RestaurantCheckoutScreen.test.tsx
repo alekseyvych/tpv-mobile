@@ -52,10 +52,15 @@ jest.mock('@/api/terminals.api', () => ({
 }));
 
 jest.mock('@/store/terminal.store', () => ({
-  useTerminalStore: (selector: (state: { selectedTerminalId: string }) => unknown) =>
-    selector({
-      selectedTerminalId: 'terminal-1'
-    })
+  useTerminalStore: Object.assign(
+    (selector: (state: { selectedTerminalId: string }) => unknown) =>
+      selector({
+        selectedTerminalId: 'terminal-1'
+      }),
+    {
+      getState: () => ({ selectedTerminalId: 'terminal-1' })
+    }
+  )
 }));
 
 function renderScreen() {
@@ -192,7 +197,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-1',
         [{ method: 'CASH', amount: 30, amountTendered: 30 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger', 'sale-line-fries'] }
       );
     });
@@ -229,7 +234,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CASH', amount: 12, amountTendered: 12 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger'] }
       );
     });
@@ -243,7 +248,8 @@ describe('RestaurantCheckoutScreen payment flows', () => {
           saleLineSnapshots: [
             expect.objectContaining({ productId: 'product-burger', quantity: 1, total: 12 })
           ]
-        })
+        }),
+        expect.any(String)
       );
     });
 
@@ -269,7 +275,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CARD', amount: 12 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger'] }
       );
     });
@@ -298,7 +304,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
           { method: 'CASH', amount: 5, amountTendered: 5 },
           { method: 'CARD', amount: 7 }
         ],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger'] }
       );
     });
@@ -326,7 +332,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CARD', amount: 30 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger', 'sale-line-fries'] }
       );
       expect(restaurantApi.releaseOrderPaymentLock).toHaveBeenCalledWith('order-1', 'terminal-1');
@@ -440,12 +446,13 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CASH', amount: 5, amountTendered: 5 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger'] }
       );
       expect(restaurantApi.settlePaidGroupItems).toHaveBeenCalledWith(
         'order-1',
-        expect.objectContaining({ orderItemIds: ['item-burger'] })
+        expect.objectContaining({ orderItemIds: ['item-burger'] }),
+        expect.any(String)
       );
     });
   });
@@ -477,7 +484,8 @@ describe('RestaurantCheckoutScreen payment flows', () => {
         expect.objectContaining({
           saleId: 'sale-resume',
           orderItemIds: ['item-burger']
-        })
+        }),
+        expect.any(String)
       );
     });
   });
@@ -528,7 +536,7 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CARD', amount: 14.03 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sale-line-burger'] }
       );
     });
@@ -583,12 +591,13 @@ describe('RestaurantCheckoutScreen payment flows', () => {
       expect(completeSale).toHaveBeenCalledWith(
         'sale-resume',
         [{ method: 'CASH', amount: 11.11, amountTendered: 11.11 }],
-        undefined,
+        expect.any(String),
         { consumeStockLineItemIds: ['sl-1'] }
       );
       expect(restaurantApi.settlePaidGroupItems).toHaveBeenCalledWith(
         'order-1',
-        expect.objectContaining({ orderItemIds: ['item-1'] })
+        expect.objectContaining({ orderItemIds: ['item-1'] }),
+        expect.any(String)
       );
     });
   });

@@ -33,15 +33,85 @@ function isWriteMethod(method?: string): method is 'POST' | 'PUT' | 'PATCH' | 'D
   return normalized === 'POST' || normalized === 'PUT' || normalized === 'PATCH' || normalized === 'DELETE';
 }
 
+function hasIdempotencyKeyHeader(config?: RetriableConfig): boolean {
+  if (!config?.headers) return false;
+  const entries = Object.entries(config.headers);
+  return entries.some(([key, value]) => key.toLowerCase() === 'idempotency-key' && typeof value === 'string' && value.trim().length > 0);
+}
+
+function requiresIdempotencyKey(configUrl: string, method?: string): boolean {
+  if (method?.toUpperCase() !== 'POST') return false;
+  const normalizedPath = toNormalizedPath(configUrl);
+
+  return (
+    /^\/sales$/.test(normalizedPath) ||
+    /^\/sales\/[^/]+\/complete$/.test(normalizedPath) ||
+    /^\/sales\/[^/]+\/refund$/.test(normalizedPath) ||
+    /^\/cash-shifts$/.test(normalizedPath) ||
+    /^\/cash-shifts\/[^/]+\/close$/.test(normalizedPath) ||
+    /^\/cash-shifts\/[^/]+\/movements$/.test(normalizedPath) ||
+    /^\/inventory\/adjustments$/.test(normalizedPath) ||
+    /^\/inventory\/stock\/adjustments$/.test(normalizedPath) ||
+    /^\/inventory\/stock\/movements$/.test(normalizedPath) ||
+    /^\/inventory\/stock\/ingredients\/adjustments$/.test(normalizedPath) ||
+    /^\/restaurant\/orders$/.test(normalizedPath) ||
+    /^\/restaurant\/orders\/[^/]+\/items$/.test(normalizedPath) ||
+    /^\/restaurant\/orders\/[^/]+\/umbrella-sale$/.test(normalizedPath) ||
+    /^\/restaurant\/orders\/[^/]+\/group-payment\/settle$/.test(normalizedPath) ||
+    /^\/payments$/.test(normalizedPath)
+  );
+}
+
+function toNormalizedPath(configUrl: string): string {
+  try {
+    return new URL(configUrl, env.apiBaseUrl).pathname.toLowerCase();
+  } catch {
+    return configUrl.split('?')[0]?.toLowerCase() ?? configUrl.toLowerCase();
+  }
+}
+
+export function isOfflineReplayExcluded(configUrl: string, method?: string): boolean {
+  const normalizedPath = toNormalizedPath(configUrl);
+  const normalizedMethod = method?.toUpperCase();
+
+  // Auth/session/security operations should never be replayed after reconnect.
+  if (normalizedPath.startsWith('/auth/')) return true;
+  if (normalizedPath === '/auth') return true;
+
+  // Device binding and local installation context are not replay-safe.
+  if (/^\/device-pairing-sessions\/complete$/.test(normalizedPath)) return true;
+  if (/^\/local-installation-context(?:\/.*)?$/.test(normalizedPath)) return true;
+
+  // Card-terminal runtime is real-time and should not execute unexpectedly after reconnect.
+  if (/^\/payments\/card-transactions(?:\/.*)?$/.test(normalizedPath)) return true;
+
+  // Restaurant operations lacking replay-safe backend idempotency guarantees are excluded.
+  if (/^\/restaurant\/orders\/[^/]+\/payment-lock(?:\/release)?$/.test(normalizedPath)) return true;
+  if (/^\/restaurant\/orders\/[^/]+\/close$/.test(normalizedPath)) return true;
+  if (/^\/restaurant\/tables\/join(?:\/split)?$/.test(normalizedPath)) return true;
+  if (normalizedMethod === 'PATCH' && /^\/restaurant\/orders\/[^/]+$/.test(normalizedPath)) return true;
+  if (/^\/restaurant\/orders\/[^/]+\/items\/[^/]+(?:\/status)?$/.test(normalizedPath)) return true;
+
+  // Backlog gaps: keep excluded until backend replay contracts are explicitly hardened.
+  if (/^\/appointments(?:\/.*)?$/.test(normalizedPath)) return true;
+  if (/^\/kitchen\/orders\/[^/]+\/items\/[^/]+\/status$/.test(normalizedPath)) return true;
+
+  // Current mobile contract mismatch: avoid replaying to a potentially non-existent endpoint.
+  if (/^\/sales\/[^/]+\/payments$/.test(normalizedPath)) return true;
+
+  return false;
+}
+
 function isQueueCandidate(error: AxiosError, config?: RetriableConfig): boolean {
   if (!config?.url) return false;
   if (config.headers?.['X-Sync-Replay'] === '1') return false;
   if (!isWriteMethod(config.method)) return false;
 
-  const url = config.url.toLowerCase();
-  if (url.includes('/auth/login') || url.includes('/auth/refresh') || url.includes('/auth/logout')) {
+  if (isOfflineReplayExcluded(config.url, config.method)) {
     return false;
   }
+
+  const url = config.url.toLowerCase();
 
   if (url.includes('/observability/log-batches')) {
     return false;
@@ -135,6 +205,15 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const config = error.config as RetriableConfig | undefined;
+
+    if (config?.url && isWriteMethod(config.method) && requiresIdempotencyKey(config.url, config.method) && !hasIdempotencyKeyHeader(config)) {
+      return Promise.reject({
+        status: 400,
+        code: 'MISSING_IDEMPOTENCY_KEY',
+        message: 'Idempotency-Key header is required for this mutation.',
+      } satisfies ApiError);
+    }
+
     if (error.response?.status === 401 && config && !config._retry) {
       config._retry = true;
 

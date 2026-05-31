@@ -93,6 +93,38 @@ describe('SyncService', () => {
     expect(mockSetSyncOperationQueue).toHaveBeenLastCalledWith([]);
   });
 
+  it('preserves Idempotency-Key in queued headers and sends it on replay', async () => {
+    const { syncService } = require('@/services/SyncService');
+    mockAxiosRequest.mockResolvedValue({ status: 200 });
+
+    await syncService.queueWrite({
+      url: '/sales/sale-1/complete',
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer token',
+        'Idempotency-Key': 'mobile-sync-idem-1',
+      },
+      body: { payments: [{ method: 'cash', amount: 10 }] },
+    });
+
+    expect(syncService.getQueue()[0].headers).toEqual({
+      Authorization: 'Bearer token',
+      'Idempotency-Key': 'mobile-sync-idem-1',
+    });
+
+    await syncService.syncQueue();
+
+    expect(mockAxiosRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token',
+          'Idempotency-Key': 'mobile-sync-idem-1',
+          'X-Sync-Replay': '1',
+        }),
+      }),
+    );
+  });
+
   it('syncQueue marks failed operations with retry metadata', async () => {
     const { syncService } = require('@/services/SyncService');
     mockAxiosRequest.mockRejectedValue(new Error('offline'));

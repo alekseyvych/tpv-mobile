@@ -16,7 +16,8 @@ function dtoToStore(
   if (!dto) return null;
   return {
     id: dto.id,
-    deviceId: dto.deviceId ?? fallbackDeviceId,
+    // DTO does not expose a dedicated deviceId field; keep a stable local identifier.
+    deviceId: fallbackDeviceId ?? dto.id,
     tenantId: dto.tenantId,
     locationId: dto.locationId,
     terminalId: dto.terminalId,
@@ -49,7 +50,7 @@ export function useLocalContext() {
     } catch {
       return null;
     }
-  }, [localContext?.deviceId, setStoreContext]);
+  }, [localContext, setStoreContext]);
 
   const clearContext = useCallback(async (): Promise<void> => {
     await clearLocalContext();

@@ -12,3 +12,26 @@ export async function getLocalInstallationContext(): Promise<LocalInstallationCo
   );
   return data;
 }
+
+/**
+ * Upsert local installation context for this device
+ * PUT /local-installation-context
+ */
+export async function upsertLocalInstallationContext(input: {
+  deviceName?: string;
+  deviceType?: string;
+}): Promise<LocalInstallationContextDto> {
+  const { data } = await apiClient.put<LocalInstallationContextDto>(
+    '/local-installation-context',
+    input
+  );
+  return data;
+}
+
+/**
+ * Clear local installation context binding on backend
+ * DELETE /local-installation-context
+ */
+export async function clearLocalInstallationContextRemote(): Promise<void> {
+  await apiClient.delete('/local-installation-context');
+}

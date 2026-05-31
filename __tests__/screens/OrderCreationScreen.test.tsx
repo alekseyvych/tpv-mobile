@@ -120,7 +120,8 @@ describe('OrderCreationScreen', () => {
     await waitFor(() => {
       expect(restaurantApi.addOrderItem).toHaveBeenCalledWith(
         'order-1',
-        expect.objectContaining({ productId: 'prod-1', quantity: 1 })
+        expect.objectContaining({ productId: 'prod-1', quantity: 1 }),
+        expect.any(String)
       );
       expect(restaurantApi.createOrder).not.toHaveBeenCalled();
     });
@@ -156,7 +157,8 @@ describe('OrderCreationScreen', () => {
               quantity: 1
             })
           ]
-        })
+        }),
+        expect.any(String)
       );
       expect(restaurantApi.addOrderItem).not.toHaveBeenCalled();
       expect(mockRestaurantState.updateTable).toHaveBeenCalledWith('table-1', {
@@ -187,7 +189,8 @@ describe('OrderCreationScreen', () => {
             { name: '- Remove', value: 'Onion' },
             { name: '+ Extra', value: 'Cheese (+€1.50)' }
           ])
-        })
+        }),
+        expect.any(String)
       );
     });
   });
@@ -212,7 +215,8 @@ describe('OrderCreationScreen', () => {
     await waitFor(() => {
       expect(restaurantApi.addOrderItem).toHaveBeenCalledWith(
         'order-1',
-        expect.objectContaining({ productId: 'prod-1', quantity: 1 })
+        expect.objectContaining({ productId: 'prod-1', quantity: 1 }),
+        expect.any(String)
       );
     });
   });
@@ -290,14 +294,16 @@ describe('OrderCreationScreen', () => {
         expect.objectContaining({
           tableId: 'table-1',
           items: [expect.objectContaining({ productId: 'prod-1' })]
-        })
+        }),
+        expect.any(String)
       );
     });
 
     await waitFor(() => {
       expect(restaurantApi.addOrderItem).toHaveBeenCalledWith(
         'order-new',
-        expect.objectContaining({ productId: 'prod-1', quantity: 2 })
+        expect.objectContaining({ productId: 'prod-1', quantity: 2 }),
+        expect.any(String)
       );
     });
   });

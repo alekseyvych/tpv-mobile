@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { createOrder, getOrdersByTable, getTables } from '@/api/restaurant.api';
 import { analyticsService } from '@/services/AnalyticsService';
 import { useRestaurantStore } from '@/store/restaurant.store';
+import { generateUUID } from '@/utils/uuid';
 
 export function useRestaurantOrders() {
   const tables = useRestaurantStore((s) => s.tables);
@@ -27,12 +28,14 @@ export function useRestaurantOrders() {
 
   const createOrderForSelectedTable = useCallback(async () => {
     if (!selectedTableId) return null;
-    const created = await createOrder(selectedTableId);
+    const idempotencyKey = generateUUID();
+    const created = await createOrder(selectedTableId, idempotencyKey);
     const current = ordersByTableId[selectedTableId] ?? [];
     setOrdersForTable(selectedTableId, [created, ...current]);
     await analyticsService.trackEvent('order.created', {
       orderId: created.id,
       tableId: selectedTableId,
+      idempotencyKey,
     });
     return created;
   }, [ordersByTableId, selectedTableId, setOrdersForTable]);

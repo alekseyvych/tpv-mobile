@@ -8,7 +8,7 @@
  * Required because POST /sales requires a valid cashShiftId.
  */
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 
 import { colors, theme } from '@/platform/theme';
 import { openCashShift } from '@/api/cashShifts.api';
+import { generateUUID } from '@/utils/uuid';
 
 interface OpenShiftModalProps {
   visible: boolean;
@@ -45,6 +46,7 @@ export function OpenShiftModal({
   const [openingBalance, setOpeningBalance] = useState('0');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const intentIdempotencyKeyRef = useRef<string | null>(null);
 
   const handleOpen = async () => {
     const balance = parseFloat(openingBalance.replace(',', '.'));
@@ -57,7 +59,10 @@ export function OpenShiftModal({
     setError(null);
 
     try {
-      const shift = await openCashShift(terminalId, balance);
+      const idempotencyKey = intentIdempotencyKeyRef.current ?? `cash-shifts.open.${generateUUID()}`;
+      intentIdempotencyKeyRef.current = idempotencyKey;
+      const shift = await openCashShift(terminalId, balance, idempotencyKey);
+      intentIdempotencyKeyRef.current = null;
       onShiftOpened(shift.id);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
@@ -80,6 +85,7 @@ export function OpenShiftModal({
     if (loading) return;
     setOpeningBalance('0');
     setError(null);
+    intentIdempotencyKeyRef.current = null;
     onCancel();
   };
 
@@ -117,6 +123,7 @@ export function OpenShiftModal({
               onChangeText={(v) => {
                 setOpeningBalance(v);
                 setError(null);
+                intentIdempotencyKeyRef.current = null;
               }}
               keyboardType="decimal-pad"
               selectTextOnFocus

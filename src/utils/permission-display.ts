@@ -10,6 +10,8 @@ export interface GroupedPermissionResource {
   permissions: SplitPermissionKey[];
 }
 
+const POST_MVP_HIDDEN_PERMISSION_RESOURCES = new Set(['appointments', 'workshop', 'attendance']);
+
 const RESOURCE_LABELS: Record<string, string> = {
   sales: 'settings.myPermissions.categories.sales',
   payments: 'settings.myPermissions.categories.payments',
@@ -54,6 +56,8 @@ function dedupePermissionKeys(permissionKeys: string[]): string[] {
   permissionKeys.forEach((permissionKey) => {
     const normalized = normalizePermissionKey(permissionKey);
     if (!normalized) return;
+    const resource = splitPermissionKey(normalized).resource;
+    if (POST_MVP_HIDDEN_PERMISSION_RESOURCES.has(resource)) return;
     const mapKey = normalized.toLowerCase();
     if (!map.has(mapKey)) {
       map.set(mapKey, normalized);

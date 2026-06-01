@@ -192,6 +192,7 @@ export type DevicePairingCompletionResponseDto = {
  */
 export type LocalInstallationContextDto = {
   id: string; // Installation UUID
+  deviceId?: string; // Backing device registration UUID when available
   tenantId: string; // Tenant ID (used for X-Tenant-ID header)
   locationId?: string; // Location/site ID
   terminalId?: string; // Terminal/station ID

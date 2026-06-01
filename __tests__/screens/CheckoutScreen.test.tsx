@@ -29,7 +29,22 @@ describe('CheckoutScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('renders checkout title', () => {
+  afterEach(() => {
+    jest.clearAllTimers();
+  });
+
+  async function waitForCatalogLoadCycle(view: ReturnType<typeof render>) {
+    await waitFor(() => {
+      expect(listCategories).toHaveBeenCalledTimes(1);
+      expect(listProducts).toHaveBeenCalledTimes(1);
+    });
+
+    await waitFor(() => {
+      expect(view.queryByText(/Loading|Cargando/i)).toBeNull();
+    });
+  }
+
+  it('renders checkout title', async () => {
     (listCategories as jest.Mock).mockResolvedValue([]);
     (listProducts as jest.Mock).mockResolvedValue([]);
 
@@ -38,6 +53,8 @@ describe('CheckoutScreen', () => {
         <CheckoutScreen onBack={() => undefined} onOpenCart={() => undefined} />
       </I18nextProvider>
     );
+
+    await waitForCatalogLoadCycle(view);
 
     expect(view.getAllByText(/Checkout|Cobro/).length).toBeGreaterThan(0);
   });

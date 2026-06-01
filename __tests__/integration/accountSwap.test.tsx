@@ -17,6 +17,12 @@ jest.mock('@/services/AnalyticsService', () => ({
   },
 }));
 
+jest.mock('@/services/SyncService', () => ({
+  syncService: {
+    clearQueue: jest.fn(async () => undefined),
+  },
+}));
+
 describe('Account Swap Permission & Context Behavior', () => {
   beforeEach(() => {
     jest.clearAllMocks();

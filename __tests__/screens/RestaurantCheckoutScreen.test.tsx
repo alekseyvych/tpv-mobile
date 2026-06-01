@@ -77,8 +77,13 @@ function renderScreen() {
 }
 
 describe('RestaurantCheckoutScreen payment flows', () => {
+  let infoSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    infoSpy = jest.spyOn(console, 'info').mockImplementation(() => undefined);
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     // Force non-dev path so tests validate completeSale payloads directly.
     (globalThis as { __DEV__?: boolean }).__DEV__ = false;
 
@@ -171,6 +176,8 @@ describe('RestaurantCheckoutScreen payment flows', () => {
   });
 
   afterEach(() => {
+    infoSpy.mockRestore();
+    errorSpy.mockRestore();
     mockOnSuccess.mockReset();
   });
 
@@ -220,6 +227,14 @@ describe('RestaurantCheckoutScreen payment flows', () => {
             expect.objectContaining({ groupName: 'Sauce', optionLabel: 'BBQ', priceDelta: 0.5 })
           ]
         })
+      })
+    );
+
+    expect(infoSpy).toHaveBeenCalledWith(
+      '[RestaurantCheckout] createUmbrellaSale payload',
+      expect.objectContaining({
+        orderId: 'order-1',
+        selectedRowsCount: 2,
       })
     );
   });
@@ -598,6 +613,25 @@ describe('RestaurantCheckoutScreen payment flows', () => {
         'order-1',
         expect.objectContaining({ orderItemIds: ['item-1'] }),
         expect.any(String)
+      );
+    });
+  });
+
+  it('logs payment attempt failure metadata when completion fails', async () => {
+    (completeSale as jest.Mock).mockRejectedValueOnce({});
+
+    const view = renderScreen();
+
+    fireEvent.press(await view.findByText(/confirm payment/i));
+
+    await waitFor(() => {
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[RestaurantCheckout] Payment attempt failed',
+        expect.objectContaining({
+          method: 'CASH',
+          selectedTotal: 30,
+          selectedOrderItemIds: ['item-burger', 'item-fries'],
+        })
       );
     });
   });

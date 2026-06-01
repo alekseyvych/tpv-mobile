@@ -9,7 +9,9 @@ import {
   logout as logoutRemote,
 } from '@/api/auth.api';
 import { analyticsService } from '@/services/AnalyticsService';
+import { syncService } from '@/services/SyncService';
 import { useAuthStore } from '@/store/auth.store';
+import { useSyncStore } from '@/store/sync.store';
 
 export function useAuth() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -17,6 +19,7 @@ export function useAuth() {
   const setTokens = useAuthStore((s) => s.setTokens);
   const setUser = useAuthStore((s) => s.setUser);
   const logoutLocal = useAuthStore((s) => s.logout);
+  const setSyncQueue = useSyncStore((s) => s.setQueue);
 
   /**
    * Login with email + password
@@ -99,6 +102,7 @@ export function useAuth() {
   }, [logoutLocal, refreshToken]);
 
   const swapAccountWithQuickAccess = useCallback(async (userId: string, pin: string) => {
+    const previousUserId = useAuthStore.getState().user?.id ?? null;
     const previousRefreshToken = refreshToken;
 
     // Auth failure here is safe — old session is still intact.
@@ -111,6 +115,13 @@ export function useAuth() {
     const nextUser = await getCurrentUser();
     setUser(nextUser);
 
+    // Account swap is an auth boundary when identity changes.
+    // Drop pending queued writes so User A operations cannot replay under User B.
+    if (previousUserId && nextUser.id !== previousUserId) {
+      await syncService.clearQueue();
+      setSyncQueue([]);
+    }
+
     // Best-effort revoke previous refresh token, if available.
     if (previousRefreshToken && previousRefreshToken !== nextTokens.refreshToken) {
       try {
@@ -122,7 +133,7 @@ export function useAuth() {
 
     await analyticsService.trackEvent('auth.login.success', { method: 'quick_access_swap' });
     return nextUser;
-  }, [refreshToken, setTokens, setUser]);
+  }, [refreshToken, setSyncQueue, setTokens, setUser]);
 
   return useMemo(() => ({
     isAuthenticated,

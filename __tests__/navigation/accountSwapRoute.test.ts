@@ -18,10 +18,10 @@ describe('accountSwapRoute', () => {
     expect(result).toEqual({ name: 'DiningFloor' });
   });
 
-  it('falls back POS routes to Checkout when safe and allowed', () => {
+  it('falls back POS routes to Checkout when safe and auth-allowed', () => {
     const result = resolveAccountSwapFallbackRoute({
       currentRouteName: 'Payment',
-      roles: ['WAITER'],
+      roles: ['CASHIER'],
       permissions: [],
       allowCheckoutFallback: true,
       isShellRouteEnabled: alwaysEnabled,
@@ -36,6 +36,18 @@ describe('accountSwapRoute', () => {
       roles: ['WAITER'],
       permissions: ['TERMINALS_READ'],
       allowCheckoutFallback: false,
+      isShellRouteEnabled: alwaysEnabled,
+    });
+
+    expect(result).toEqual({ name: 'TerminalSelection', params: { target: 'Checkout' } });
+  });
+
+  it('falls back POS routes to TerminalSelection when checkout is not auth-allowed', () => {
+    const result = resolveAccountSwapFallbackRoute({
+      currentRouteName: 'Payment',
+      roles: ['WAITER'],
+      permissions: [],
+      allowCheckoutFallback: true,
       isShellRouteEnabled: alwaysEnabled,
     });
 

@@ -6,7 +6,6 @@ import { DeviceInfoScreen } from '@/screens/settings/DeviceInfoScreen';
 
 const mockSettings = {
   appVersion: '1.2.3',
-  canManageDeviceContext: true,
   deviceInfo: {
     installationId: 'inst-1',
     tenantId: 'tenant-1',
@@ -15,8 +14,6 @@ const mockSettings = {
     configuredAt: '2026-05-12T10:00:00Z',
   },
   refreshDeviceContext: jest.fn(async () => undefined),
-  updateDeviceContext: jest.fn(async () => undefined),
-  clearRemoteDeviceContext: jest.fn(async () => undefined),
 };
 
 jest.mock('@/hooks/useSettings', () => ({
@@ -29,41 +26,33 @@ jest.mock('@/components/PermissionsStatus', () => ({
 
 describe('DeviceInfoScreen', () => {
   beforeEach(() => {
-    mockSettings.canManageDeviceContext = true;
     mockSettings.refreshDeviceContext.mockClear();
-    mockSettings.updateDeviceContext.mockClear();
-    mockSettings.clearRemoteDeviceContext.mockClear();
   });
 
-  it('saves local context changes through the real settings hook contract', async () => {
+  it('refreshes local context through the settings hook contract', async () => {
     const view = render(
       <I18nextProvider i18n={i18n}>
         <DeviceInfoScreen onBack={() => undefined} />
       </I18nextProvider>,
     );
 
-    fireEvent.changeText(view.getByPlaceholderText(/Installation ID|ID de instalación/), 'inst-2');
-    fireEvent.changeText(view.getByPlaceholderText(/Device name|Nombre del dispositivo/), 'Kitchen Tablet');
-    fireEvent.changeText(view.getByPlaceholderText(/Device type|Tipo de dispositivo/), 'KIOSK');
-    fireEvent.press(view.getByText(/Save context|Guardar contexto/));
+    fireEvent.press(view.getByText(/Refresh context|Refrescar contexto/));
 
     await waitFor(() => {
-      expect(mockSettings.updateDeviceContext).toHaveBeenCalledWith({
-        installationId: 'inst-2',
-        deviceName: 'Kitchen Tablet',
-        deviceType: 'KIOSK',
-      });
+      expect(mockSettings.refreshDeviceContext).toHaveBeenCalledTimes(1);
     });
   });
 
-  it('hides privileged device actions when the role is not allowed', () => {
-    mockSettings.canManageDeviceContext = false;
+  it('renders device context in read-only mode and hides edit/clear actions', () => {
     const view = render(
       <I18nextProvider i18n={i18n}>
         <DeviceInfoScreen onBack={() => undefined} />
       </I18nextProvider>,
     );
 
+    expect(view.getByPlaceholderText(/Installation ID|ID de instalación/).props.editable).toBe(false);
+    expect(view.getByPlaceholderText(/Device name|Nombre del dispositivo/).props.editable).toBe(false);
+    expect(view.getByPlaceholderText(/Device type|Tipo de dispositivo/).props.editable).toBe(false);
     expect(view.queryByText(/Save context|Guardar contexto/)).toBeNull();
     expect(view.queryByText(/Clear remote context|Limpiar contexto remoto/)).toBeNull();
     expect(view.getByText(/Manager or admin access is required|Se requiere acceso de manager o admin/)).toBeTruthy();
@@ -86,23 +75,6 @@ describe('DeviceInfoScreen', () => {
     expect(view.queryByText(/internal-stack-trace/)).toBeNull();
   });
 
-  it('shows permission error when save returns 403', async () => {
-    mockSettings.updateDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
-
-    const view = render(
-      <I18nextProvider i18n={i18n}>
-        <DeviceInfoScreen onBack={() => undefined} />
-      </I18nextProvider>,
-    );
-
-    fireEvent.changeText(view.getByPlaceholderText(/Installation ID|ID de instalación/), 'inst-2');
-    fireEvent.press(view.getByText(/Save context|Guardar contexto/));
-
-    await waitFor(() => {
-      expect(view.getByText(/You do not have permission to manage device context|No tienes permiso para gestionar el contexto del dispositivo/)).toBeTruthy();
-    });
-  });
-
   it('shows permission error when refresh returns 403', async () => {
     mockSettings.refreshDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
 
@@ -119,8 +91,8 @@ describe('DeviceInfoScreen', () => {
     });
   });
 
-  it('shows permission error when clear returns 403', async () => {
-    mockSettings.clearRemoteDeviceContext.mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+  it('shows generic refresh error when refresh fails for non-permission reasons', async () => {
+    mockSettings.refreshDeviceContext.mockRejectedValueOnce(new Error('timeout'));
 
     const view = render(
       <I18nextProvider i18n={i18n}>
@@ -128,10 +100,10 @@ describe('DeviceInfoScreen', () => {
       </I18nextProvider>,
     );
 
-    fireEvent.press(view.getByText(/Clear remote context|Limpiar contexto remoto/));
+    fireEvent.press(view.getByText(/Refresh context|Refrescar contexto/));
 
     await waitFor(() => {
-      expect(view.getByText(/You do not have permission to manage device context|No tienes permiso para gestionar el contexto del dispositivo/)).toBeTruthy();
+      expect(view.getByText(/Could not refresh device context|No se pudo refrescar el contexto del dispositivo/)).toBeTruthy();
     });
   });
 });

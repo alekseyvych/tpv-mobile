@@ -2,6 +2,12 @@ import { fireEvent, render } from '@testing-library/react-native';
 
 import { Topbar } from '@/components/Topbar';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
 describe('Topbar', () => {
   it('renders title and triggers back action', () => {
     const onBack = jest.fn();

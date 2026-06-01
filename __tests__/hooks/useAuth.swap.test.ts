@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { render, waitFor } from '@testing-library/react-native';
+import { act } from 'react-test-renderer';
 import React from 'react';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -11,6 +12,8 @@ import {
   loginWithQuickAccess,
   logout as logoutRemote,
 } from '@/api/auth.api';
+
+const mockSyncClearQueue = jest.fn(async () => undefined);
 
 jest.mock('@/api/auth.api', () => ({
   getCurrentUser: jest.fn(),
@@ -24,6 +27,12 @@ jest.mock('@/api/auth.api', () => ({
 jest.mock('@/services/AnalyticsService', () => ({
   analyticsService: {
     trackEvent: jest.fn(async () => undefined),
+  },
+}));
+
+jest.mock('@/services/SyncService', () => ({
+  syncService: {
+    clearQueue: () => mockSyncClearQueue(),
   },
 }));
 
@@ -42,6 +51,7 @@ describe('useAuth swap account', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSyncClearQueue.mockClear();
     useAuthStore.setState({
       accessToken: 'old-access',
       refreshToken: 'old-refresh',
@@ -98,7 +108,9 @@ describe('useAuth swap account', () => {
     await waitFor(() => {
       expect(swapAccountWithQuickAccessFn).toBeTruthy();
     });
-    await swapAccountWithQuickAccessFn?.('new-user', '1234');
+    await act(async () => {
+      await swapAccountWithQuickAccessFn?.('new-user', '1234');
+    });
 
     const state = useAuthStore.getState();
     expect(state.accessToken).toBe('new-access');
@@ -107,6 +119,7 @@ describe('useAuth swap account', () => {
     expect(state.roles).toEqual(['ADMIN']);
     expect(state.permissions).toEqual(['ORDER_VIEW', 'ORDER_REMOVE']);
     expect(logoutRemote).toHaveBeenCalledWith('old-refresh');
+    expect(mockSyncClearQueue).toHaveBeenCalledTimes(1);
 
     const contextState = useContextStore.getState();
     const terminalState = useTerminalStore.getState();
@@ -124,12 +137,44 @@ describe('useAuth swap account', () => {
     await waitFor(() => {
       expect(swapAccountWithQuickAccessFn).toBeTruthy();
     });
-    await expect(swapAccountWithQuickAccessFn?.('new-user', '0000')).rejects.toThrow();
+    let swapError: unknown;
+    await act(async () => {
+      try {
+        await swapAccountWithQuickAccessFn?.('new-user', '0000');
+      } catch (error) {
+        swapError = error;
+      }
+    });
+    expect(swapError).toBeTruthy();
 
     const state = useAuthStore.getState();
     expect(state.accessToken).toBe('old-access');
     expect(state.refreshToken).toBe('old-refresh');
     expect(state.user?.id).toBe('old-user');
     expect(logoutRemote).not.toHaveBeenCalled();
+    expect(mockSyncClearQueue).not.toHaveBeenCalled();
+  });
+
+  it('does not clear sync queue when swap resolves to the same user identity', async () => {
+    (loginWithQuickAccess as jest.Mock).mockResolvedValue({
+      accessToken: 'new-access',
+      refreshToken: 'new-refresh',
+    });
+    (getCurrentUser as jest.Mock).mockResolvedValue({
+      id: 'old-user',
+      email: 'old@example.com',
+      tenantId: 'tenant-1',
+      roles: ['WAITER'],
+      permissions: ['ORDER_VIEW'],
+    });
+
+    await waitFor(() => {
+      expect(swapAccountWithQuickAccessFn).toBeTruthy();
+    });
+    await act(async () => {
+      await swapAccountWithQuickAccessFn?.('old-user', '1234');
+    });
+
+    expect(mockSyncClearQueue).not.toHaveBeenCalled();
   });
 });

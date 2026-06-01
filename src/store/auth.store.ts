@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { syncService } from '@/services/SyncService';
+import { useSyncStore } from '@/store/sync.store';
 import type { AuthUser } from '@/types/store';
 import { clearTokens, setTokens } from '@/utils/secure-storage';
 
@@ -51,7 +53,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isRefreshing });
   },
   async logout() {
-    // Phase rule: logout clears auth/session tokens only.
+    // Logout is an auth boundary: clear queued sync writes to prevent cross-user replay.
+    await syncService.clearQueue();
+    useSyncStore.getState().setQueue([]);
+
     await clearTokens();
     set({
       accessToken: null,

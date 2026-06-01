@@ -12,6 +12,10 @@ import { PaymentScreen } from '@/screens/pos/PaymentScreen';
 import { usePaymentRuntimeStore } from '@/store/payment-runtime.store';
 import { useTerminalStore } from '@/store/terminal.store';
 
+async function waitForPrepareSaleToSettle(view: ReturnType<typeof render>) {
+  await view.findByText(/Confirm payment/i);
+}
+
 jest.mock('@/api/sales.api', () => ({
   createSale: jest.fn(),
   completeSale: jest.fn(),
@@ -48,12 +52,14 @@ describe('PaymentScreen', () => {
     usePaymentRuntimeStore.getState().resetCardRuntimePhase();
   });
 
-  it('renders payment options', () => {
+  it('renders payment options', async () => {
     const view = render(
       <I18nextProvider i18n={i18n}>
         <PaymentScreen onPaid={() => undefined} onBack={() => undefined} />
       </I18nextProvider>
     );
+
+    await waitForPrepareSaleToSettle(view);
 
     expect(view.queryByText(/pay cash/i)).toBeTruthy();
   });
@@ -68,8 +74,8 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
-    // Wait for prepareSale to finish (button changes from "Preparing sale" to "Confirm payment")
-    const confirmButton = await view.findByText(/Confirm payment/i);
+    await waitForPrepareSaleToSettle(view);
+    const confirmButton = view.getByText(/Confirm payment/i);
     fireEvent.press(confirmButton);
 
     await waitFor(() => {
@@ -85,6 +91,8 @@ describe('PaymentScreen', () => {
         <PaymentScreen onPaid={() => undefined} onBack={() => undefined} />
       </I18nextProvider>
     );
+
+    await waitForPrepareSaleToSettle(view);
 
     // Switch to CARD method
     const cardMethodButton = view.getByText(/pay card/i);
@@ -150,6 +158,8 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
+    await waitForPrepareSaleToSettle(view);
+
     // Switch to CARD method then press Start card payment
     const cardMethodButton = view.getByText(/pay card/i);
     fireEvent.press(cardMethodButton);
@@ -172,6 +182,8 @@ describe('PaymentScreen', () => {
         <PaymentScreen onPaid={() => undefined} onBack={() => undefined} />
       </I18nextProvider>
     );
+
+    await waitForPrepareSaleToSettle(view);
 
     // Switch to CARD method then press Start card payment
     const cardMethodButton = view.getByText(/pay card/i);
@@ -222,6 +234,8 @@ describe('PaymentScreen', () => {
       </I18nextProvider>
     );
 
+    await waitForPrepareSaleToSettle(view);
+
     const cardMethodButton = view.getByText(/pay card/i);
     fireEvent.press(cardMethodButton);
 
@@ -245,6 +259,8 @@ describe('PaymentScreen', () => {
         <PaymentScreen onPaid={onPaid} onBack={() => undefined} />
       </I18nextProvider>
     );
+
+    await waitForPrepareSaleToSettle(view);
 
     // Note: testing mixed payment requires finding input fields and buttons
     // This is a simplified test; actual implementation would need to test input handling

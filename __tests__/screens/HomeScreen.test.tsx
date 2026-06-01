@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { I18nextProvider } from 'react-i18next';
 import type { ComponentProps } from 'react';
 import { TextInput } from 'react-native';
+import { act } from 'react-test-renderer';
 
 import i18n from '@/i18n/config';
 import { HomeScreen } from '@/screens/home/HomeScreen';
@@ -223,10 +224,14 @@ describe('HomeScreen', () => {
 
     expect(mockGetTables).toHaveBeenCalledTimes(0);
 
-    jest.advanceTimersByTime(299);
+    act(() => {
+      jest.advanceTimersByTime(299);
+    });
     expect(mockGetTables).toHaveBeenCalledTimes(0);
 
-    jest.advanceTimersByTime(1);
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
     await waitFor(() => {
       expect(mockGetTables).toHaveBeenCalledTimes(1);
     });

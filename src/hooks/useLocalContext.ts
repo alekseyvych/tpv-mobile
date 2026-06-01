@@ -16,8 +16,8 @@ function dtoToStore(
   if (!dto) return null;
   return {
     id: dto.id,
-    // DTO does not expose a dedicated deviceId field; keep a stable local identifier.
-    deviceId: fallbackDeviceId ?? dto.id,
+    // Prefer the paired device registration id from the backend, then fall back to any stored id.
+    deviceId: dto.deviceId ?? fallbackDeviceId,
     tenantId: dto.tenantId,
     locationId: dto.locationId,
     terminalId: dto.terminalId,

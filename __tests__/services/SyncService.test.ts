@@ -7,6 +7,11 @@ jest.mock('@/utils/storage', () => ({
   setSyncOperationQueue: (...args: unknown[]) => mockSetSyncOperationQueue(...args),
 }));
 
+jest.mock('@/utils/secure-storage', () => ({
+  clearTokens: jest.fn(async () => undefined),
+  setTokens: jest.fn(async () => undefined),
+}));
+
 jest.mock('@/config/env', () => ({
   env: {
     apiBaseUrl: 'https://example.test',
@@ -123,6 +128,69 @@ describe('SyncService', () => {
         }),
       }),
     );
+  });
+
+  it('does not replay queued writes after logout and login as another user', async () => {
+    const { syncService } = require('@/services/SyncService');
+    const { useAuthStore } = require('@/store/auth.store');
+
+    await syncService.queueWrite({
+      url: '/sales/sale-logout-boundary/complete',
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer user-a-token',
+        'Idempotency-Key': 'logout-boundary-idem-1',
+      },
+      body: { payments: [{ method: 'cash', amount: 10 }] },
+    });
+
+    expect(syncService.getQueue()).toHaveLength(1);
+
+    useAuthStore.setState({
+      accessToken: 'user-a-token',
+      refreshToken: 'user-a-refresh',
+      user: {
+        id: 'user-a',
+        email: 'a@example.com',
+        tenantId: 'tenant-1',
+        roles: ['WAITER'],
+        permissions: ['ORDER_VIEW'],
+      },
+      roles: ['WAITER'],
+      permissions: ['ORDER_VIEW'],
+      isAuthenticated: true,
+      isRefreshing: false,
+    });
+
+    await useAuthStore.getState().logout();
+
+    // Simulate new login on same device.
+    useAuthStore.setState({
+      accessToken: 'user-b-token',
+      refreshToken: 'user-b-refresh',
+      user: {
+        id: 'user-b',
+        email: 'b@example.com',
+        tenantId: 'tenant-1',
+        roles: ['MANAGER'],
+        permissions: ['ORDER_VIEW'],
+      },
+      roles: ['MANAGER'],
+      permissions: ['ORDER_VIEW'],
+      isAuthenticated: true,
+      isRefreshing: false,
+    });
+
+    const progress = await syncService.syncQueue(true);
+
+    expect(syncService.getQueue()).toHaveLength(0);
+    expect(progress).toEqual({
+      total: 0,
+      processed: 0,
+      success: 0,
+      failed: 0,
+    });
+    expect(mockAxiosRequest).not.toHaveBeenCalled();
   });
 
   it('syncQueue marks failed operations with retry metadata', async () => {

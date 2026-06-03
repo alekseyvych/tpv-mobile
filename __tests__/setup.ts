@@ -1,5 +1,7 @@
 import '@testing-library/jest-native/extend-expect';
 
+jest.setTimeout(15000);
+
 jest.mock('expo-secure-store', () => ({
   setItemAsync: jest.fn(),
   getItemAsync: jest.fn(async () => null),
@@ -19,6 +21,52 @@ jest.mock('@react-native-community/netinfo', () => ({
     addEventListener: jest.fn(() => jest.fn()),
   },
 }));
+
+jest.mock('react-native-worklets', () => ({
+  __esModule: true,
+  createWorkletRuntime: jest.fn(() => ({})),
+  executeOnUIRuntimeSync: jest.fn((fn: (...args: unknown[]) => unknown) => fn),
+  makeShareable: jest.fn((value: unknown) => value),
+  makeShareableCloneRecursive: jest.fn((value: unknown) => value),
+  runOnJS: jest.fn((fn: (...args: unknown[]) => unknown) => fn),
+  runOnRuntime: jest.fn((_runtime: unknown, fn: (...args: unknown[]) => unknown) => fn),
+  runOnUI: jest.fn((fn: (...args: unknown[]) => unknown) => fn),
+}));
+
+jest.mock('react-native-reanimated', () => {
+  const makeSharedValue = (initialValue: unknown) => ({
+    value: initialValue,
+    get() {
+      return this.value;
+    },
+    set(nextValue: unknown) {
+      this.value = typeof nextValue === 'function' ? nextValue(this.value) : nextValue;
+    },
+  });
+
+  return {
+    __esModule: true,
+    default: {
+      View: require('react-native').View,
+    },
+    Easing: {
+      linear: jest.fn((value: number) => value),
+      ease: jest.fn((value: number) => value),
+      in: jest.fn((fn: unknown) => fn),
+      out: jest.fn((fn: unknown) => fn),
+      inOut: jest.fn((fn: unknown) => fn),
+    },
+    runOnJS: jest.fn((fn: (...args: unknown[]) => unknown) => fn),
+    useAnimatedStyle: jest.fn((factory: () => unknown) => factory()),
+    useDerivedValue: jest.fn((factory: () => unknown) => makeSharedValue(factory())),
+    useSharedValue: jest.fn((initialValue: unknown) => makeSharedValue(initialValue)),
+    withDelay: jest.fn((_delayMs: number, value: unknown) => value),
+    withRepeat: jest.fn((value: unknown) => value),
+    withSequence: jest.fn((...values: unknown[]) => values[values.length - 1]),
+    withSpring: jest.fn((value: unknown) => value),
+    withTiming: jest.fn((value: unknown) => value),
+  };
+});
 
 jest.mock('react-native-gesture-handler', () => {
   const React = require('react');

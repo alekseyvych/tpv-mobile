@@ -264,7 +264,7 @@ const styles = StyleSheet.create({
     padding: theme.spacing.s3,
   },
   backdropCloseLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   sheet: {
     backgroundColor: theme.colors.bgPage,

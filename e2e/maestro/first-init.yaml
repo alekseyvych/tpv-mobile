@@ -3,7 +3,7 @@
 # Requires: Android emulator running, app installed (expo run:android)
 # Run: maestro test e2e/maestro/first-init.yaml
 
-appId: com.tpvmobile
+appId: com.tpvgrao.mobile
 ---
 # Verify first-init screen appears on fresh launch
 - launchApp:

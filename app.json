@@ -10,6 +10,9 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.tpvgrao.mobile",
+      "versionCode": 1000000,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -24,6 +27,12 @@
       "expo-secure-store",
       "expo-font",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "1a08b14a-ce6a-445f-9320-f93adeea5274"
+      }
+    },
+    "owner": "bridalhen"
   }
 }

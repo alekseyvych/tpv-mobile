@@ -4,8 +4,8 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "mobile:phone": "powershell -ExecutionPolicy Bypass -File scripts/mobile-start-android.ps1 -AvdName tpv_phone",
     "mobile:tablet": "powershell -ExecutionPolicy Bypass -File scripts/mobile-start-android.ps1 -AvdName tpv_tablet",
     "mobile:phone:reset": "powershell -ExecutionPolicy Bypass -File scripts/mobile-start-android.ps1 -AvdName tpv_phone -WipeData",

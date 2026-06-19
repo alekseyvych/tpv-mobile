@@ -2,7 +2,7 @@
 # Windows-compatible. Run after logging in with items in cart.
 # Run: maestro test e2e/maestro/card-payment.yaml
 
-appId: com.tpvmobile
+appId: com.tpvgrao.mobile
 ---
 # Navigate to POS
 - tapOn: "POS"

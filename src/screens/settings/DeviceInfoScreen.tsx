@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, Switch, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { Card } from '@/components/Card';
@@ -12,6 +12,8 @@ import { SectionHeader } from '@/components/SectionHeader';
 import { Topbar } from '@/components/Topbar';
 import { BodyText, ErrorText } from '@/components/Typography';
 import { useSettings } from '@/hooks/useSettings';
+import { useRuntimeCompatibility } from '@/hooks/useRuntimeCompatibility';
+import { useBootstrapLedgerStore } from '@/store/bootstrap-ledger.store';
 import { theme } from '@/components/theme/theme';
 
 function extractPermissionError(error: unknown): boolean {
@@ -32,6 +34,16 @@ type Props = {
 export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
   const { t } = useTranslation();
   const { appVersion, deviceInfo, refreshDeviceContext } = useSettings();
+  const {
+    status: compatibilityStatus,
+    message: compatibilityMessage,
+    latestRelease,
+    lastCheckedAt,
+    autoCheckEnabled,
+    checkIntervalMinutes,
+    setUpdatePreferences,
+    checkCompatibility,
+  } = useRuntimeCompatibility();
   const [installationId, setInstallationId] = useState(
     deviceInfo.installationId === 'unknown' ? '' : deviceInfo.installationId,
   );
@@ -40,8 +52,12 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
   );
   const [deviceType, setDeviceType] = useState(deviceInfo.deviceType);
   const [busy, setBusy] = useState(false);
+  const [compatibilityBusy, setCompatibilityBusy] = useState(false);
+  const [intervalInput, setIntervalInput] = useState(String(checkIntervalMinutes));
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const bootstrapInitialized = useBootstrapLedgerStore((s) => s.initialized);
+  const bootstrapVersion = useBootstrapLedgerStore((s) => s.bootstrapVersion);
 
   async function onRefresh() {
     setBusy(true);
@@ -59,6 +75,24 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function onCheckCompatibility() {
+    setCompatibilityBusy(true);
+    try {
+      await checkCompatibility();
+    } finally {
+      setCompatibilityBusy(false);
+    }
+  }
+
+  async function onOpenLatestArtifact() {
+    if (!latestRelease?.artifactUrl) return;
+    if (latestRelease.requiresInitializedBootstrap && !bootstrapInitialized) {
+      setError(t('settings.platformUpdatesBootstrapRequired'));
+      return;
+    }
+    await Linking.openURL(latestRelease.artifactUrl);
   }
 
   const content = (
@@ -104,6 +138,66 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
           <BodyText>{t('settings.deviceContextRoleHint')}</BodyText>
         </View>
       </Card>
+
+      <Card>
+        <SectionHeader
+          title={t('settings.platformUpdatesTitle')}
+          subtitle={t('settings.platformUpdatesDescription')}
+        />
+        <View style={styles.preferenceRow}>
+          <BodyText>{t('settings.platformUpdatesAutoCheck')}</BodyText>
+          <Switch
+            value={autoCheckEnabled}
+            onValueChange={(value) => setUpdatePreferences({ autoCheckEnabled: value })}
+          />
+        </View>
+        <Input
+          value={intervalInput}
+          onChangeText={(value) => setIntervalInput(value)}
+          placeholder={t('settings.platformUpdatesIntervalPlaceholder')}
+          keyboardType="number-pad"
+          onBlur={() => {
+            const next = Math.max(5, Number(intervalInput) || 60);
+            setIntervalInput(String(next));
+            setUpdatePreferences({ checkIntervalMinutes: next });
+          }}
+          editable={autoCheckEnabled}
+        />
+        <View style={styles.actions}>
+          <Button
+            title={compatibilityBusy ? t('common.loading') : t('settings.platformUpdatesCheckNow')}
+            onPress={() => void onCheckCompatibility()}
+            variant="secondary"
+            fullWidth
+            disabled={compatibilityBusy}
+          />
+          {latestRelease?.artifactUrl ? (
+            <Button
+              title={t('settings.platformUpdatesOpenDownload')}
+              onPress={() => void onOpenLatestArtifact()}
+              variant="secondary"
+              fullWidth
+            />
+          ) : null}
+        </View>
+        <View style={styles.metaStack}>
+          <BodyText>
+            {t('settings.platformUpdatesStatus')}: {compatibilityStatus}
+          </BodyText>
+          <BodyText>
+            {t('settings.platformUpdatesLatestVersion')}: {latestRelease?.version ?? '-'}
+          </BodyText>
+          <BodyText>
+            {t('settings.platformUpdatesBootstrapState')}: {bootstrapInitialized ? bootstrapVersion ?? 'initialized' : 'not_initialized'}
+          </BodyText>
+          <BodyText>
+            {t('settings.platformUpdatesLastChecked')}: {lastCheckedAt ?? '-'}
+          </BodyText>
+          <BodyText>
+            {compatibilityMessage ?? t('settings.platformUpdatesNoWarnings')}
+          </BodyText>
+        </View>
+      </Card>
     </>
   );
 
@@ -122,6 +216,16 @@ export function DeviceInfoScreen({ onBack, embedded = false }: Props) {
 const styles = StyleSheet.create({
   spacer: { height: theme.spacing.s2 },
   actions: { gap: theme.spacing.s2, marginTop: theme.spacing.s3 },
+  preferenceRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.s2,
+  },
+  metaStack: {
+    gap: theme.spacing.s1,
+    marginTop: theme.spacing.s2,
+  },
   message: { marginTop: theme.spacing.s2 },
   saved: { marginTop: theme.spacing.s2, color: theme.colors.success },
 });

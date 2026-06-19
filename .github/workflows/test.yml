@@ -3,62 +3,84 @@ name: tpv-mobile-ci
 on:
   push:
     paths:
-      - 'tpv-mobile/**'
+      - '**'
   pull_request:
     paths:
-      - 'tpv-mobile/**'
+      - '**'
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: tpv-mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve mobile directory
+        shell: bash
+        run: |
+          if [ -f tpv-mobile/package.json ]; then
+            echo "MOBILE_DIR=tpv-mobile" >> "$GITHUB_ENV"
+          else
+            echo "MOBILE_DIR=." >> "$GITHUB_ENV"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: tpv-mobile/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tpv-mobile/package-lock.json
 
       - name: Install
-        run: npm install
+        working-directory: ${{ env.MOBILE_DIR }}
+        run: npm ci
 
       - name: Lint
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run lint
 
       - name: Typecheck
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run typecheck
 
       - name: Test
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run test
 
       - name: Expo Doctor
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run doctor
 
   e2e-ios:
     runs-on: macos-latest
     timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: tpv-mobile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve mobile directory
+        shell: bash
+        run: |
+          if [ -f tpv-mobile/package.json ]; then
+            echo "MOBILE_DIR=tpv-mobile" >> "$GITHUB_ENV"
+          else
+            echo "MOBILE_DIR=." >> "$GITHUB_ENV"
+          fi
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: tpv-mobile/package-lock.json
+          cache-dependency-path: |
+            package-lock.json
+            tpv-mobile/package-lock.json
 
       - name: Install
-        run: npm install
+        working-directory: ${{ env.MOBILE_DIR }}
+        run: npm ci
 
       - name: Setup Xcode
         run: |
@@ -66,30 +88,37 @@ jobs:
           sudo xctool -version
 
       - name: Build Detox
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:build
         continue-on-error: true
 
       - name: Run E2E Tests - Auth
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:auth
         continue-on-error: true
 
       - name: Run E2E Tests - Dining Floor
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:dining
         continue-on-error: true
 
       - name: Run E2E Tests - Kitchen
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:kitchen
         continue-on-error: true
 
       - name: Run E2E Tests - Checkout
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:checkout
         continue-on-error: true
 
       - name: Run E2E Tests - Token Refresh
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:token-refresh
         continue-on-error: true
 
       - name: Run E2E Tests - Error Scenarios
+        working-directory: ${{ env.MOBILE_DIR }}
         run: npm run e2e:test:errors
         continue-on-error: true
 
@@ -98,5 +127,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: detox-logs-ios
-          path: artifacts/
+          path: |
+            artifacts/
+            tpv-mobile/artifacts/
           retention-days: 7

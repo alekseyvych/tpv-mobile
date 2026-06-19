@@ -29,9 +29,14 @@ export function useRuntimeCompatibility() {
   const message = useRuntimeCompatibilityStore((s) => s.message);
   const updateRequired = useRuntimeCompatibilityStore((s) => s.updateRequired);
   const updateRecommended = useRuntimeCompatibilityStore((s) => s.updateRecommended);
+  const latestRelease = useRuntimeCompatibilityStore((s) => s.latestRelease);
+  const lastCheckedAt = useRuntimeCompatibilityStore((s) => s.lastCheckedAt);
+  const autoCheckEnabled = useRuntimeCompatibilityStore((s) => s.autoCheckEnabled);
+  const checkIntervalMinutes = useRuntimeCompatibilityStore((s) => s.checkIntervalMinutes);
   const setChecking = useRuntimeCompatibilityStore((s) => s.setChecking);
   const setResult = useRuntimeCompatibilityStore((s) => s.setResult);
   const setUnknown = useRuntimeCompatibilityStore((s) => s.setUnknown);
+  const setUpdatePreferences = useRuntimeCompatibilityStore((s) => s.setUpdatePreferences);
 
   const checkCompatibility = useCallback(async () => {
     setChecking();
@@ -44,6 +49,7 @@ export function useRuntimeCompatibility() {
         updateRequired: response.updateRequired,
         updateRecommended: response.updateRecommended,
         checkedAt: response.checkedAt,
+        latestRelease: response.latestRelease,
       });
       return response;
     } catch {
@@ -61,6 +67,11 @@ export function useRuntimeCompatibility() {
     message,
     updateRequired,
     updateRecommended,
+    latestRelease,
+    lastCheckedAt,
+    autoCheckEnabled,
+    checkIntervalMinutes,
+    setUpdatePreferences,
     checkCompatibility,
   };
 }

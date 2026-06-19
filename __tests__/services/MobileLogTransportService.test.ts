@@ -89,7 +89,7 @@ describe('MobileLogTransportService', () => {
       level: 'info',
       component: 'pairing',
       eventName: 'pairing.success',
-      message: 'paired successfully',
+      message: 'paired successfully card 4242424242424242',
       metadata: {
         refreshToken: 'should-redact',
       },
@@ -116,6 +116,10 @@ describe('MobileLogTransportService', () => {
         timeout: 5000,
       }),
     );
+    const payload = mockAxiosPost.mock.calls[0][1];
+    expect(JSON.stringify(payload)).toContain('[REDACTED_CARD]');
+    expect(JSON.stringify(payload)).not.toContain('4242424242424242');
+    expect(JSON.stringify(payload)).not.toContain('should-redact');
   });
 
   it('does not call backend if auth or pairing state is missing', async () => {

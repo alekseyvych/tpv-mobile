@@ -4,7 +4,7 @@ import { NavigationContainer, createNavigationContainerRef } from '@react-naviga
 import { createNativeStackNavigator, type NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, Text, View } from 'react-native';
+import { AppState, Linking, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -51,6 +51,7 @@ import { PairingMethodScreen } from '@/screens/pairing/PairingMethodScreen';
 import { PairingSuccessScreen } from '@/screens/pairing/PairingSuccessScreen';
 import { QRScanScreen } from '@/screens/pairing/QRScanScreen';
 import { markDeviceInitialized } from '@/utils/storage';
+import { getRuntimeMetadata } from '@/utils/runtime-metadata';
 import { HomeScreen } from '@/screens/home/HomeScreen';
 import { DeviceInfoScreen } from '@/screens/settings/DeviceInfoScreen';
 import { LanguageScreen } from '@/screens/settings/LanguageScreen';
@@ -310,6 +311,9 @@ export default function App() {
     message: compatibilityMessage,
     updateRequired,
     updateRecommended,
+    latestRelease,
+    autoCheckEnabled,
+    checkIntervalMinutes,
     checkCompatibility,
   } = useRuntimeCompatibility();
   const [currentRouteName, setCurrentRouteName] = useState<string>('Login');
@@ -358,10 +362,20 @@ export default function App() {
 
   useEffect(() => {
     mobileLogTransportService.start();
-    void checkCompatibility();
+
+    if (autoCheckEnabled) {
+      void checkCompatibility();
+    }
+
+    const intervalHandle =
+      autoCheckEnabled && checkIntervalMinutes > 0
+        ? setInterval(() => {
+            void checkCompatibility();
+          }, Math.max(5, checkIntervalMinutes) * 60 * 1000)
+        : null;
 
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
+      if (state === 'active' && autoCheckEnabled) {
         void checkCompatibility();
         void mobileLogTransportService.flushNow();
         return;
@@ -374,16 +388,20 @@ export default function App() {
 
     return () => {
       subscription.remove();
+      if (intervalHandle) {
+        clearInterval(intervalHandle);
+      }
       mobileLogTransportService.stop();
     };
-  }, [checkCompatibility]);
+  }, [autoCheckEnabled, checkCompatibility, checkIntervalMinutes]);
 
   useEffect(() => {
+    const runtime = getRuntimeMetadata();
     setContext({
       userId: user?.id,
       tenantId: user?.tenantId,
       deviceType: localContext?.deviceType,
-      appVersion: '1.0.0',
+      appVersion: runtime.appVersion,
     });
   }, [localContext?.deviceType, setContext, user?.id, user?.tenantId]);
 
@@ -426,7 +444,16 @@ export default function App() {
           >
             {compatibilityMessage || t('compatibility.requiredDescription')}
           </Text>
-          <Button title={t('common.retry')} onPress={() => void checkCompatibility()} />
+          {latestRelease?.artifactUrl ? (
+            <Button
+              title={t('compatibility.downloadUpdate')}
+              onPress={() => {
+                void Linking.openURL(latestRelease.artifactUrl);
+              }}
+              style={{ marginBottom: theme.spacing.s3 }}
+            />
+          ) : null}
+          <Button title={t('common.retry')} onPress={() => void checkCompatibility()} variant="secondary" />
         </View>
       </AppProviders>
     );
